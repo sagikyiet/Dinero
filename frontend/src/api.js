@@ -1,0 +1,74 @@
+const BASE = '/api';
+
+async function request(url, options = {}) {
+  const res = await fetch(`${BASE}${url}`, options);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(body.error || body.errors?.join(', ') || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export const fetchMonths = () => request('/months');
+
+export const fetchDashboard = (monthId) => request(`/months/${monthId}/dashboard`);
+
+export const fetchHistory = () => request('/months/history/all');
+
+export const updateMonth = (monthId, data) =>
+  request(`/months/${monthId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
+export const deleteMonth = (monthId) =>
+  request(`/months/${monthId}`, { method: 'DELETE' });
+
+export const fetchTransactions = (params = {}) => {
+  const qs = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== '' && v !== null))
+  ).toString();
+  return request(`/transactions${qs ? '?' + qs : ''}`);
+};
+
+export const setCardOwner = (credit_card_name, bank, owner) =>
+  request('/card-owners', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ credit_card_name, bank, owner }),
+  });
+
+export const tagTransaction = (txId, tag, permanent = false) =>
+  request(`/transactions/${txId}/tag`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tag, permanent }),
+  });
+
+
+export const getMonthFileDownloadUrl = (monthId, bank) =>
+  `${BASE}/months/${monthId}/files/${bank}/download`;
+
+export const deleteMonthFile = (monthId, bank) =>
+  request(`/months/${monthId}/files/${bank}`, { method: 'DELETE' });
+
+export async function replaceMonthFile(monthId, bank, file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await fetch(`${BASE}/months/${monthId}/files/${bank}`, { method: 'POST', body: fd });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function uploadFiles(formData) {
+  const res = await fetch(`${BASE}/upload`, { method: 'POST', body: formData });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || (body.errors && body.errors.join('\n')) || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
