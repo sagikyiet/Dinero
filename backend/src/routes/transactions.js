@@ -64,12 +64,16 @@ router.get('/', (req, res) => {
 router.patch('/:id/tag', (req, res) => {
   const db = getDb();
   const txId = parseInt(req.params.id);
-  const { tag, permanent } = req.body; // tag may be null to clear
+  const { tag, tag_note, permanent } = req.body; // tag may be null to clear
 
   const tx = db.prepare('SELECT * FROM transactions WHERE id = ?').get(txId);
   if (!tx) return res.status(404).json({ error: 'פעולה לא נמצאה' });
 
-  db.prepare('UPDATE transactions SET tag = ? WHERE id = ?').run(tag ?? null, txId);
+  db.prepare('UPDATE transactions SET tag = ?, tag_note = ? WHERE id = ?').run(
+    tag ?? null,
+    tag ? (tag_note ?? '') : '',
+    txId
+  );
 
   if (permanent && tag && tx.description) {
     const dayOfMonth = parseInt(tx.date.slice(8, 10), 10); // YYYY-MM-DD

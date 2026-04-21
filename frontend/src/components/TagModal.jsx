@@ -4,13 +4,14 @@ import { tagTransaction } from '../api';
 
 export default function TagModal({ tx, onClose, onSaved }) {
   const [selected, setSelected] = useState(tx.tag ?? null);
+  const [tagNote, setTagNote] = useState(tx.tag_note ?? '');
   const [permanent, setPermanent] = useState(false);
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
     setSaving(true);
     try {
-      await tagTransaction(tx.id, selected, permanent);
+      await tagTransaction(tx.id, selected, permanent, tagNote.trim());
       onSaved();
       onClose();
     } catch (e) {
@@ -45,12 +46,26 @@ export default function TagModal({ tx, onClose, onSaved }) {
             {selected && (
               <button
                 className="tag-option tag-option-clear"
-                onClick={() => setSelected(null)}
+                onClick={() => { setSelected(null); setTagNote(''); }}
               >
                 ✕ הסר תיוג
               </button>
             )}
           </div>
+
+          {selected && (
+            <div className="form-group">
+              <label>שם מותאם אישית (אופציונלי)</label>
+              <input
+                className="tag-note-input"
+                type="text"
+                placeholder={`לדוגמה: ${TAGS[selected]?.label}...`}
+                value={tagNote}
+                onChange={e => setTagNote(e.target.value)}
+                maxLength={120}
+              />
+            </div>
+          )}
 
           <label className="tag-permanent-label">
             <input

@@ -39,11 +39,11 @@ export const setCardOwner = (credit_card_name, bank, owner) =>
     body: JSON.stringify({ credit_card_name, bank, owner }),
   });
 
-export const tagTransaction = (txId, tag, permanent = false) =>
+export const tagTransaction = (txId, tag, permanent = false, tag_note = '') =>
   request(`/transactions/${txId}/tag`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tag, permanent }),
+    body: JSON.stringify({ tag, permanent, tag_note }),
   });
 
 
