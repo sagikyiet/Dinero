@@ -6,6 +6,7 @@ import CreditCardBreakdown from './components/CreditCardBreakdown';
 import TransactionTable from './components/TransactionTable';
 import HistoryView from './components/HistoryView';
 import FilesView from './components/FilesView';
+import SpecialTransactions from './components/SpecialTransactions';
 import MonthSelector from './components/MonthSelector';
 
 const MONTH_NAMES = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
@@ -209,6 +210,8 @@ export default function App() {
                   )}
 
                   <MonthlySummary summary={dashboard.summary} transactions={transactions} />
+
+                  <SpecialTransactions transactions={transactions} />
 
                   {dashboard.creditCards.length > 0 && (
                     <CreditCardBreakdown cards={dashboard.creditCards} onUpdate={handleRefresh} />

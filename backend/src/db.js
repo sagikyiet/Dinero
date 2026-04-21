@@ -74,6 +74,7 @@ function initSchema(db) {
   try { db.exec(`ALTER TABLE months ADD COLUMN hapoalim_filename TEXT DEFAULT ''`); } catch (_) {}
   try { db.exec(`ALTER TABLE months ADD COLUMN leumi_filepath TEXT DEFAULT ''`); } catch (_) {}
   try { db.exec(`ALTER TABLE months ADD COLUMN hapoalim_filepath TEXT DEFAULT ''`); } catch (_) {}
+  try { db.exec(`ALTER TABLE transactions ADD COLUMN tag_note TEXT DEFAULT ''`); } catch (_) {}
 }
 
 module.exports = { getDb };

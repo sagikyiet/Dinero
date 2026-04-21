@@ -166,6 +166,9 @@ export default function TransactionTable({ transactions, onUpdate }) {
                   <td className="date-cell">{tx.date?.slice(0, 10)}</td>
                   <td className="desc-cell">
                     <span className="desc-text">{tx.description}</span>
+                    {tx.tag_note && (
+                      <span className="tx-tag-note">{tx.tag_note}</span>
+                    )}
                     {tx.is_credit_card && (
                       <span className="badge badge-cc">{tx.credit_card_name}</span>
                     )}

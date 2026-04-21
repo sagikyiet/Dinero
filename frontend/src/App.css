@@ -549,6 +549,28 @@ body {
   --tag-color: #64748b;
   font-size: 0.8rem;
 }
+.tag-note-input {
+  width: 100%;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  background: var(--bg);
+  color: var(--text);
+  direction: rtl;
+  transition: border .15s;
+}
+.tag-note-input:focus { outline: none; border-color: var(--primary); }
+
+.tx-tag-note {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
+  font-style: italic;
+}
+
 .tag-permanent-label {
   display: flex;
   align-items: flex-start;
@@ -701,6 +723,117 @@ body {
   box-shadow: var(--shadow);
 }
 .tooltip-label { font-weight: 600; margin-bottom: 0.35rem; color: var(--text); }
+
+/* ─── Special Transactions ──────────────────────────────────────── */
+.special-card { padding: 1.25rem; }
+
+.special-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 0.75rem 1.25rem;
+  align-items: start;
+}
+
+.special-section {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  min-width: 0;
+}
+
+.special-section-income         { border-color: #a7f3d0; }
+.special-section-expense        { border-color: #fecaca; }
+.special-section-routine-income  { border-color: #fde68a; }
+.special-section-routine-expense { border-color: #cbd5e1; }
+
+.special-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.special-section-income          .special-section-header { background: #ecfdf5; }
+.special-section-expense         .special-section-header { background: #fef2f2; }
+.special-section-routine-income  .special-section-header { background: #fffbeb; }
+.special-section-routine-expense .special-section-header { background: #f8fafc; }
+
+.special-section-label { color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.income-total         { color: var(--green);   font-size: 1rem; }
+.expense-total        { color: var(--red);     font-size: 1rem; }
+.routine-income-total  { color: #d97706;        font-size: 1rem; }
+.routine-expense-total { color: #64748b;        font-size: 1rem; }
+
+.special-rows { display: flex; flex-direction: column; }
+
+.special-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.9rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+  min-width: 0;
+}
+.special-row:hover { background: #fafafa; }
+
+.special-date {
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  flex-shrink: 0;
+  width: 80px;
+}
+.special-desc {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.special-tag { flex-shrink: 0; }
+.special-totals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 1.25rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 2px solid var(--border);
+}
+
+.special-total-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+}
+.special-total-income  { background: #ecfdf5; }
+.special-total-expense { background: #fef2f2; }
+
+.special-total-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.special-total-amount {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.special-amount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 90px;
+  text-align: left;
+}
 
 /* ─── Files View ─────────────────────────────────────────────────── */
 .files-view { padding: 0 0.5rem; }
