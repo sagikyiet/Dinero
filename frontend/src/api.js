@@ -64,6 +64,61 @@ export async function replaceMonthFile(monthId, bank, file) {
   return res.json();
 }
 
+export async function uploadCreditCardFile(file, cardName = '', owner = 'joint', period = '') {
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('card_name', cardName);
+  fd.append('owner', owner);
+  fd.append('period', period);
+  const res = await fetch(`${BASE}/credit-cards/upload`, { method: 'POST', body: fd });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export const updateCCFileMeta = (id, cardName, owner, period = '') =>
+  request(`/credit-cards/files/${id}/meta`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ card_name: cardName, owner, period }),
+  });
+
+export const fetchCCFiles = () => request('/credit-cards/files');
+
+export const deleteCCFile = (id) => request(`/credit-cards/files/${id}`, { method: 'DELETE' });
+
+export async function replaceCCFile(id, file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await fetch(`${BASE}/credit-cards/files/${id}/replace`, { method: 'POST', body: fd });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export const getCCFileDownloadUrl = (id) => `${BASE}/credit-cards/files/${id}/download`;
+
+export const tagCCTransaction = (txId, tag, permanent = false, tag_note = '') =>
+  request(`/credit-cards/transactions/${txId}/tag`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tag, permanent, tag_note }),
+  });
+
+export const fetchCCFileTransactions = (uploadId) =>
+  request(`/credit-cards/transactions?upload_id=${uploadId}`);
+
+export const fetchCCTransactions = (params = {}) => {
+  const qs = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== '' && v !== null))
+  ).toString();
+  return request(`/credit-cards/transactions${qs ? '?' + qs : ''}`);
+};
+
 export async function uploadFiles(formData) {
   const res = await fetch(`${BASE}/upload`, { method: 'POST', body: formData });
   if (!res.ok) {

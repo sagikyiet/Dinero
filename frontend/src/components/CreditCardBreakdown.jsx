@@ -1,11 +1,10 @@
-import { useState } from 'react';
-import { setCardOwner } from '../api';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 const fmt = (n) =>
   new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(n);
 
 const CARD_COLORS = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#06b6d4'];
-const BANK_LABELS = { leumi: 'לאומי', hapoalim: 'פועלים' };
 
 const OWNERS = {
   sagi:  { label: 'שגיא', color: '#059669', bg: '#ecfdf5' },
@@ -20,17 +19,64 @@ const FILTER_OPTIONS = [
   { value: 'joint', label: 'משותף' },
 ];
 
-export default function CreditCardBreakdown({ cards, onUpdate }) {
-  const [ownerFilter, setOwnerFilter] = useState('all');
+const fmtFull = (n) =>
+  new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
-  async function handleOwnerChange(card, newOwner) {
-    try {
-      await setCardOwner(card.credit_card_name, card.bank, newOwner);
-      onUpdate?.();
-    } catch (e) {
-      alert('שגיאה: ' + e.message);
+function ValidationIndicator({ bankCCTotal, ccFilesTotal, ccFilesCount }) {
+  const [tipPos, setTipPos] = useState(null);
+  const iconRef = useRef(null);
+
+  let icon, tipText, cls;
+  if (ccFilesCount === 0) {
+    icon = 'ℹ';
+    tipText = 'לא הועלו קבצי אשראי לתקופה זו';
+    cls = 'cc-valid-none';
+  } else {
+    const gap = Math.round((ccFilesTotal - bankCCTotal) * 100) / 100;
+    if (Math.abs(gap) < 0.01) {
+      icon = '✓';
+      tipText = 'הסכומים תואמים';
+      cls = 'cc-valid-ok';
+    } else {
+      icon = '⚠';
+      tipText = `פער של ${fmtFull(Math.abs(gap))} בין חיובי העו"ש לקבצי האשראי שהועלו`;
+      cls = 'cc-valid-warn';
     }
   }
+
+  function handleMouseEnter() {
+    if (!iconRef.current) return;
+    const r = iconRef.current.getBoundingClientRect();
+    setTipPos({ top: r.top - 8, centerX: r.left + r.width / 2 });
+  }
+
+  function handleMouseLeave() {
+    setTipPos(null);
+  }
+
+  return (
+    <span
+      ref={iconRef}
+      className={`cc-valid-wrap ${cls}`}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {icon}
+      {tipPos && createPortal(
+        <span
+          className="cc-valid-tip"
+          style={{ '--tip-center-x': `${tipPos.centerX}px`, '--tip-top': `${tipPos.top}px` }}
+        >
+          {tipText}
+        </span>,
+        document.body
+      )}
+    </span>
+  );
+}
+
+export default function CreditCardBreakdown({ cards, bankCCTotal = 0, ccFilesTotal = 0, ccFilesCount = 0 }) {
+  const [ownerFilter, setOwnerFilter] = useState('all');
 
   const filtered = ownerFilter === 'all'
     ? cards
@@ -59,29 +105,21 @@ export default function CreditCardBreakdown({ cards, onUpdate }) {
       <div className="cc-list">
         {filtered.map((card, i) => {
           const pct = grandTotal > 0 ? (card.total / grandTotal) * 100 : 0;
-          const bankLabel = BANK_LABELS[card.bank] ?? card.bank;
-          const displayName = `${card.credit_card_name} ${bankLabel}`;
           const ownerDef = card.owner ? OWNERS[card.owner] : null;
 
           return (
-            <div key={`${card.credit_card_name}-${card.bank}`} className="cc-item">
+            <div key={`${card.card_name}-${card.owner}`} className="cc-item">
               <div className="cc-meta">
                 <span className="cc-dot" style={{ background: CARD_COLORS[i % CARD_COLORS.length] }} />
-                <span className="cc-name">{displayName}</span>
-                <select
-                  className="cc-owner-select"
-                  style={ownerDef
-                    ? { background: ownerDef.bg, color: ownerDef.color, borderColor: ownerDef.color }
-                    : {}
-                  }
-                  value={card.owner || ''}
-                  onChange={e => handleOwnerChange(card, e.target.value)}
-                >
-                  <option value="" disabled>בעלות</option>
-                  <option value="sagi">שגיא</option>
-                  <option value="maya">מאיה</option>
-                  <option value="joint">משותף</option>
-                </select>
+                <span className="cc-name">{card.card_name}</span>
+                {ownerDef && (
+                  <span
+                    className="badge"
+                    style={{ background: ownerDef.bg, color: ownerDef.color, fontSize: '0.75rem' }}
+                  >
+                    {ownerDef.label}
+                  </span>
+                )}
                 <span className="cc-amount">{fmt(card.total)}</span>
                 <span className="cc-pct">{pct.toFixed(0)}%</span>
               </div>
@@ -104,7 +142,16 @@ export default function CreditCardBreakdown({ cards, onUpdate }) {
 
       <div className="cc-total">
         <span>סה"כ{ownerFilter !== 'all' ? ` (${OWNERS[ownerFilter]?.label})` : ' כרטיסים'}</span>
-        <span>{fmt(total)}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          {fmt(ownerFilter === 'all' ? bankCCTotal : total)}
+          {ownerFilter === 'all' && (
+            <ValidationIndicator
+              bankCCTotal={bankCCTotal}
+              ccFilesTotal={ccFilesTotal}
+              ccFilesCount={ccFilesCount}
+            />
+          )}
+        </span>
       </div>
     </div>
   );

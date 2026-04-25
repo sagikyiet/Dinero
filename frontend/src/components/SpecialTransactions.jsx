@@ -5,13 +5,14 @@ const fmt = (n) =>
   new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 2 }).format(n);
 
 function Section({ title, rows, amountKey, amountClass, headerClass }) {
-  if (rows.length === 0) return null;
   const total = rows.reduce((s, tx) => s + (tx[amountKey] || 0), 0);
   return (
     <div className={`special-section ${headerClass}`}>
       <div className="special-section-header">
         <span className="special-section-label">{title}</span>
-        <span className={`special-section-total ${amountClass}`}>{fmt(total)}</span>
+        {rows.length > 0 && (
+          <span className={`special-section-total ${amountClass}`}>{fmt(total)}</span>
+        )}
       </div>
       <div className="special-rows">
         {rows.map(tx => {
@@ -44,7 +45,7 @@ export default function SpecialTransactions({ transactions }) {
     const byDate = (a, b) => b.date.localeCompare(a.date);
     return {
       largeIncomes:    tagged.filter(tx => tx.tag === 'large_income').sort(byDate),
-      largeExpenses:   tagged.filter(tx => tx.tag === 'large_expense' || tx.tag === 'savings').sort(byDate),
+      largeExpenses:   tagged.filter(tx => tx.tag === 'large_expense').sort(byDate),
       routineIncomes:  tagged.filter(tx => tx.tag === 'routine_income').sort(byDate),
       routineExpenses: tagged.filter(tx => tx.tag === 'routine_expense').sort(byDate),
     };
