@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { TAGS, isSalaryTag } from '../tags';
 
 const fmt = (n) =>
@@ -39,7 +39,22 @@ function Section({ title, rows, amountKey, amountClass, headerClass }) {
   );
 }
 
-export default function SpecialTransactions({ transactions }) {
+function NormalizedItem({ label, amount, colorClass, tooltip }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div
+      className={`norm-item ${colorClass}`}
+      onMouseEnter={() => setVisible(true)}
+      onMouseLeave={() => setVisible(false)}
+    >
+      <span className="norm-label">{label}</span>
+      <span className="norm-amount">{fmt(amount)}</span>
+      {visible && <div className="norm-tooltip">{tooltip}</div>}
+    </div>
+  );
+}
+
+export default function SpecialTransactions({ transactions, summary = {} }) {
   const { largeIncomes, largeExpenses, routineIncomes, routineExpenses } = useMemo(() => {
     const tagged = transactions.filter(tx => tx.tag && TAGS[tx.tag] && !isSalaryTag(tx.tag));
     const byDate = (a, b) => b.date.localeCompare(a.date);
@@ -58,6 +73,10 @@ export default function SpecialTransactions({ transactions }) {
   const totalIncome  = sum(routineIncomes, 'credit') + sum(largeIncomes, 'credit');
   const totalExpense = sum(routineExpenses, 'debit') + sum(largeExpenses, 'debit');
 
+  const normIncome  = (summary.total_income  ?? 0) - sum(largeIncomes,  'credit');
+  const normExpense = (summary.total_expenses ?? 0) - sum(largeExpenses, 'debit');
+  const normBalance = normIncome - normExpense;
+
   return (
     <div className="card special-card">
       <h3 className="card-title">פעולות גדולות</h3>
@@ -75,6 +94,45 @@ export default function SpecialTransactions({ transactions }) {
         <div className="special-total-item special-total-expense">
           <span className="special-total-label">סה״כ הוצאות גדולות</span>
           <span className="special-total-amount debit-col">{fmt(totalExpense)}</span>
+        </div>
+      </div>
+
+      <div className="normalized-section">
+        <h4 className="normalized-title">סיכום חודשי מנורמל</h4>
+        <div className="normalized-grid">
+          <NormalizedItem
+            label="סה״כ הכנסות מנורמל"
+            amount={normIncome}
+            colorClass="norm-income"
+            tooltip={
+              <>
+                <strong>סה״כ הכנסות פחות הכנסות מיוחדות</strong><br />
+                {fmt(summary.total_income ?? 0)} − {fmt(sum(largeIncomes, 'credit'))} = {fmt(normIncome)}
+              </>
+            }
+          />
+          <NormalizedItem
+            label="סה״כ הוצאות מנורמל"
+            amount={normExpense}
+            colorClass="norm-expense"
+            tooltip={
+              <>
+                <strong>סה״כ הוצאות פחות הוצאות מיוחדות</strong><br />
+                {fmt(summary.total_expenses ?? 0)} − {fmt(sum(largeExpenses, 'debit'))} = {fmt(normExpense)}
+              </>
+            }
+          />
+          <NormalizedItem
+            label="מאזן מנורמל"
+            amount={normBalance}
+            colorClass={normBalance >= 0 ? 'norm-balance-pos' : 'norm-balance-neg'}
+            tooltip={
+              <>
+                <strong>הכנסות מנורמלות פחות הוצאות מנורמלות</strong><br />
+                {fmt(normIncome)} − {fmt(normExpense)} = {fmt(normBalance)}
+              </>
+            }
+          />
         </div>
       </div>
     </div>

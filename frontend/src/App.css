@@ -921,6 +921,90 @@ body {
   text-align: left;
 }
 
+/* ─── Normalized Summary ─────────────────────────────────────────── */
+.normalized-section {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 2px solid var(--border);
+}
+
+.normalized-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 0.5rem;
+}
+
+.normalized-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.norm-item {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  cursor: default;
+}
+
+.norm-income      { background: #ecfdf5; }
+.norm-expense     { background: #fef2f2; }
+.norm-balance-pos { background: #eff6ff; }
+.norm-balance-neg { background: #fef2f2; }
+
+.norm-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.norm-amount {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.norm-income .norm-amount      { color: var(--green); }
+.norm-expense .norm-amount     { color: var(--red); }
+.norm-balance-pos .norm-amount { color: var(--primary); }
+.norm-balance-neg .norm-amount { color: var(--red); }
+
+.norm-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  left: 0;
+  background: #1e293b;
+  color: #f1f5f9;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  z-index: 100;
+  white-space: normal;
+  text-align: center;
+  pointer-events: none;
+}
+
+.norm-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #1e293b;
+}
+
 /* ─── Files View ─────────────────────────────────────────────────── */
 .files-view { padding: 0 0.5rem; }
 .files-view-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 1.25rem; }

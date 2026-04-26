@@ -227,7 +227,7 @@ export default function App() {
 
                   <MonthlySummary summary={dashboard.summary} transactions={transactions} />
 
-                  <SpecialTransactions transactions={[...transactions, ...(dashboard.ccTagged || [])]} />
+                  <SpecialTransactions transactions={[...transactions, ...(dashboard.ccTagged || [])]} summary={dashboard.summary} />
 
                   {dashboard.creditCards.length > 0 && (
                     <CreditCardBreakdown
