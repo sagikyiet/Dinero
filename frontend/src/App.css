@@ -306,6 +306,56 @@ body {
   font-weight: 600; font-size: 0.9rem;
 }
 
+/* ─── CC Validation Indicator ───────────────────────────────────── */
+.cc-valid-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: default;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.cc-valid-ok   { color: #16a34a; background: #dcfce7; }
+.cc-valid-warn { color: #c2410c; background: #fff7ed; }
+.cc-valid-none { color: #64748b; background: #f1f5f9; }
+.cc-valid-tip {
+  position: fixed;
+  top: calc(var(--tip-top) - 8px);
+  left: var(--tip-center-x);
+  transform: translate(-50%, -100%);
+  background: #1e293b;
+  color: #fff;
+  font-size: 0.84rem;
+  font-weight: 400;
+  line-height: 1.55;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  min-width: 220px;
+  max-width: 320px;
+  text-align: center;
+  padding: 12px 14px;
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow: 0 4px 14px rgba(0,0,0,.28);
+  direction: rtl;
+}
+.cc-valid-tip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #1e293b;
+}
+
 /* ─── Savings Form ───────────────────────────────────────────────── */
 .savings-form { display: flex; flex-direction: column; gap: 0.75rem; }
 .form-group { display: flex; flex-direction: column; gap: 0.3rem; }
@@ -523,6 +573,11 @@ body {
 }
 .tag-options {
   display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.tag-row {
+  display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
@@ -656,8 +711,39 @@ body {
 }
 .modal-close:hover { background: var(--bg); }
 
+/* ─── Upload type chooser ────────────────────────────────────────── */
+.upload-type-chooser {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 1.5rem 1.25rem 1.75rem;
+}
+
+.upload-type-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 1.5rem 1rem;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+}
+.upload-type-btn:hover {
+  border-color: var(--primary);
+  background: #eff6ff;
+}
+
+.upload-type-icon  { font-size: 2rem; line-height: 1; }
+.upload-type-label { font-size: 1rem; font-weight: 700; color: var(--text); }
+.upload-type-desc  { font-size: 0.78rem; color: var(--text-muted); }
+
 /* ─── Upload Form ────────────────────────────────────────────────── */
 .upload-form { padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+.upload-cc-name-input { width: 100%; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .form-row .form-group select {
   width: 100%; padding: 0.5rem 0.75rem;
@@ -921,6 +1007,9 @@ body {
 .files-action-btn:hover:not(.disabled) { background: var(--bg); border-color: var(--primary); color: var(--primary); }
 .files-action-btn.files-btn-danger { color: var(--red); border-color: var(--red); background: #fef2f2; }
 .files-action-btn.files-btn-danger:hover { background: #fee2e2; }
+.files-action-btn.files-btn-delete { color: #dc2626; border-color: #fca5a5; background: #fef2f2; }
+.files-action-btn.files-btn-delete:hover { background: #fee2e2; border-color: #dc2626; }
+.files-action-btn.files-btn-delete.confirm { background: #fee2e2; border-color: #dc2626; font-weight: 600; }
 .files-action-btn.files-btn-replace { color: var(--primary); border-color: var(--primary); background: #eff6ff; }
 .files-action-btn.files-btn-replace:hover:not(.disabled) { background: #dbeafe; }
 .files-action-btn.files-btn-preview { color: var(--text-muted); }
@@ -970,6 +1059,135 @@ body {
   background: var(--surface);
 }
 .files-preview-error { color: var(--red); }
+
+/* ─── Credit Card Company Badges ────────────────────────────────── */
+.badge-company { }
+.badge-isracard { background: #e0f2fe; color: #0369a1; }
+.badge-max      { background: #fef3c7; color: #92400e; }
+
+.cc-category-badge { background: #f0fdf4; color: #15803d; }
+
+.cc-notes-cell { font-size: 0.8rem; color: var(--text-muted); max-width: 200px; }
+
+/* ─── FilesView top bar + period filter ─────────────────────────── */
+.files-top-bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.files-period-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  flex: 1;
+}
+
+.period-pill {
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.period-pill:hover { border-color: var(--primary); color: var(--primary); }
+.period-pill.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* ─── Period sub-section (bank / CC split inside a period card) ──── */
+.files-period-sub {
+  margin-top: 0.85rem;
+}
+
+.files-sub-label {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint, #94a3b8);
+  margin-bottom: 0.5rem;
+}
+
+.files-sub-empty {
+  font-size: 0.82rem;
+  color: var(--text-faint, #94a3b8);
+  padding: 0.4rem 0.25rem;
+  font-style: italic;
+}
+
+/* ─── CC Metadata Form ───────────────────────────────────────────── */
+.cc-meta-form {
+  padding: 0.75rem 0.25rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  border-top: 1px solid var(--border);
+  margin-top: 0.5rem;
+}
+
+.cc-meta-row {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.cc-meta-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.cc-meta-name-group { flex: 1; min-width: 160px; }
+
+.cc-meta-form .form-group label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.cc-period-selectors { display: flex; gap: 0.4rem; }
+
+.cc-period-selectors select {
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.cc-meta-input { width: 100%; }
+
+.cc-owner-pills { display: flex; gap: 0.4rem; }
+
+.cc-meta-form .form-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  padding-top: 0.1rem;
+}
+
+.cc-owner-badge {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #f5f3ff;
+  color: #7c3aed;
+}
+
+/* ─── CC Transactions View ───────────────────────────────────────── */
+.cc-tx-view { padding: 0 0.5rem; }
 
 /* ─── Error & Loading ────────────────────────────────────────────── */
 .error-banner {

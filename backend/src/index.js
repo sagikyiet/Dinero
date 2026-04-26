@@ -8,6 +8,7 @@ const transactionsRoutes = require('./routes/transactions');
 const monthsRoutes = require('./routes/months');
 const tagRulesRoutes = require('./routes/tagRules');
 const cardOwnersRoutes = require('./routes/cardOwners');
+const creditCardsRoutes = require('./routes/creditCards');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -26,6 +27,7 @@ app.use('/api/transactions', transactionsRoutes);
 app.use('/api/months', monthsRoutes);
 app.use('/api/tag-rules', tagRulesRoutes);
 app.use('/api/card-owners', cardOwnersRoutes);
+app.use('/api/credit-cards', creditCardsRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', name: 'Dinero', version: '1.0.0' });

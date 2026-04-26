@@ -87,14 +87,28 @@ router.get('/:id/dashboard', (req, res) => {
     WHERE month_id = ?
   `).get(monthId);
 
+  const monthKey = `${month.year}-${String(month.month).padStart(2, '0')}`;
   const creditCards = db.prepare(`
-    SELECT t.credit_card_name, t.bank, COALESCE(SUM(t.debit), 0) AS total, co.owner
-    FROM transactions t
-    LEFT JOIN card_owners co ON co.credit_card_name = t.credit_card_name AND co.bank = t.bank
-    WHERE t.month_id = ? AND t.is_credit_card = 1
-    GROUP BY t.credit_card_name, t.bank
+    SELECT card_name, COALESCE(owner, 'joint') AS owner, COALESCE(SUM(amount), 0) AS total
+    FROM credit_card_transactions
+    WHERE month_key = ? AND card_name IS NOT NULL AND card_name != ''
+    GROUP BY card_name, owner
     ORDER BY total DESC
-  `).all(monthId);
+  `).all(monthKey);
+
+  const bankCCTotal = db.prepare(`
+    SELECT COALESCE(SUM(debit), 0) AS total
+    FROM transactions
+    WHERE month_id = ? AND is_credit_card = 1
+  `).get(monthId).total;
+
+  const ccFilesRow = db.prepare(`
+    SELECT COALESCE(SUM(amount), 0) AS total, COUNT(*) AS cnt
+    FROM credit_card_transactions
+    WHERE month_key = ?
+  `).get(monthKey);
+  const ccFilesTotal = ccFilesRow.total;
+  const ccFilesCount = ccFilesRow.cnt;
 
   const specialTransactions = db.prepare(`
     SELECT * FROM transactions
@@ -102,7 +116,23 @@ router.get('/:id/dashboard', (req, res) => {
     ORDER BY date DESC
   `).all(monthId);
 
-  res.json({ month, summary, creditCards, specialTransactions });
+  // Tagged CC transactions for the same calendar month, normalized to match bank tx shape
+  const EXPENSE_TAGS = new Set(['large_expense', 'routine_expense', 'savings']);
+  const ccTagged = db.prepare(`
+    SELECT * FROM credit_card_transactions
+    WHERE month_key = ? AND tag IS NOT NULL AND tag != ''
+    ORDER BY date DESC
+  `).all(monthKey).map(tx => ({
+    id: `cc_${tx.id}`,
+    date: tx.date,
+    description: tx.merchant || '',
+    tag: tx.tag,
+    tag_note: tx.tag_note || '',
+    debit:  EXPENSE_TAGS.has(tx.tag) ? tx.amount : null,
+    credit: !EXPENSE_TAGS.has(tx.tag) ? tx.amount : null,
+  }));
+
+  res.json({ month, summary, creditCards, specialTransactions, ccTagged, bankCCTotal, ccFilesTotal, ccFilesCount });
 });
 
 // Update savings / notes for a month

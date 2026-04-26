@@ -8,6 +8,7 @@ import HistoryView from './components/HistoryView';
 import FilesView from './components/FilesView';
 import SpecialTransactions from './components/SpecialTransactions';
 import MonthSelector from './components/MonthSelector';
+import CreditCardTransactionsView from './components/CreditCardTransactionsView';
 
 const MONTH_NAMES = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
 
@@ -20,7 +21,8 @@ export default function App() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [showUpload, setShowUpload] = useState(false);
+  const [showUpload,    setShowUpload]    = useState(false);
+  const [filesRefreshKey, setFilesRefreshKey] = useState(0);
   const [showNotes, setShowNotes] = useState(false);
   const [notesText, setNotesText] = useState('');
   const [notesSaving, setNotesSaving] = useState(false);
@@ -74,15 +76,23 @@ export default function App() {
         setError(e.message);
       }
     }
+    if (v === 'dashboard' && selectedId) {
+      loadDashboard(selectedId);
+    }
   }
 
   async function handleUploadSuccess(result) {
     setShowUpload(false);
-    const data = await loadMonths();
-    const uploaded = data.find(m => m.id === result.monthId);
-    if (uploaded) {
-      setSelectedId(uploaded.id);
-      setView('dashboard');
+    if (result.type === 'cc') {
+      setFilesRefreshKey(k => k + 1);
+      setView('files');
+    } else {
+      const data = await loadMonths();
+      const uploaded = data.find(m => m.id === result.monthId);
+      if (uploaded) {
+        setSelectedId(uploaded.id);
+        setView('dashboard');
+      }
     }
   }
 
@@ -120,6 +130,12 @@ export default function App() {
             onClick={() => handleViewChange('files')}
           >
             קבצים
+          </button>
+          <button
+            className={`nav-btn${view === 'credit-cards' ? ' active' : ''}`}
+            onClick={() => handleViewChange('credit-cards')}
+          >
+            כרטיסי אשראי
           </button>
         </nav>
         <button className="btn-upload" onClick={() => setShowUpload(true)}>
@@ -211,10 +227,16 @@ export default function App() {
 
                   <MonthlySummary summary={dashboard.summary} transactions={transactions} />
 
-                  <SpecialTransactions transactions={transactions} />
+                  <SpecialTransactions transactions={[...transactions, ...(dashboard.ccTagged || [])]} />
 
                   {dashboard.creditCards.length > 0 && (
-                    <CreditCardBreakdown cards={dashboard.creditCards} onUpdate={handleRefresh} />
+                    <CreditCardBreakdown
+                      cards={dashboard.creditCards}
+                      bankCCTotal={dashboard.bankCCTotal ?? 0}
+                      ccFilesTotal={dashboard.ccFilesTotal ?? 0}
+                      ccFilesCount={dashboard.ccFilesCount ?? 0}
+                      onUpdate={handleRefresh}
+                    />
                   )}
 
                   <TransactionTable
@@ -236,7 +258,13 @@ export default function App() {
 
         {view === 'files' && (
           <main className="main full">
-            <FilesView months={months} onChanged={loadMonths} />
+            <FilesView key={filesRefreshKey} months={months} onChanged={loadMonths} />
+          </main>
+        )}
+
+        {view === 'credit-cards' && (
+          <main className="main full">
+            <CreditCardTransactionsView />
           </main>
         )}
       </div>

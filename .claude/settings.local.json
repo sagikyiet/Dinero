@@ -6,7 +6,12 @@
       "Bash(curl -s http://localhost:3001/api/health)",
       "Bash(npx vite:*)",
       "Bash(taskkill //F //IM node.exe)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(node --experimental-sqlite --check src/index.js)",
+      "Bash(node --experimental-sqlite --check src/routes/creditCards.js)",
+      "Bash(node --experimental-sqlite --check src/parsers/isracard.js)",
+      "Bash(node --experimental-sqlite --check src/parsers/max.js)",
+      "Bash(node --experimental-sqlite --check src/parsers/creditCardParsers.js)"
     ]
   }
 }

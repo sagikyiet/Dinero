@@ -2,16 +2,23 @@ import { useState } from 'react';
 import { TAGS } from '../tags';
 import { tagTransaction } from '../api';
 
-export default function TagModal({ tx, onClose, onSaved }) {
+const TAG_ROWS = [
+  ['salary_sagi', 'salary_maya', 'savings'],
+  ['large_income', 'large_expense', 'routine_income', 'routine_expense'],
+];
+
+export default function TagModal({ tx, onClose, onSaved, tagFn }) {
   const [selected, setSelected] = useState(tx.tag ?? null);
   const [tagNote, setTagNote] = useState(tx.tag_note ?? '');
   const [permanent, setPermanent] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const applyTag = tagFn ?? tagTransaction;
+
   async function handleSave() {
     setSaving(true);
     try {
-      await tagTransaction(tx.id, selected, permanent, tagNote.trim());
+      await applyTag(tx.id, selected, permanent, tagNote.trim());
       onSaved();
       onClose();
     } catch (e) {
@@ -33,15 +40,22 @@ export default function TagModal({ tx, onClose, onSaved }) {
           <p className="tag-modal-desc">{tx.description}</p>
 
           <div className="tag-options">
-            {Object.entries(TAGS).map(([key, { label, color, bg }]) => (
-              <button
-                key={key}
-                className={`tag-option${selected === key ? ' selected' : ''}`}
-                style={{ '--tag-color': color, '--tag-bg': bg }}
-                onClick={() => setSelected(selected === key ? null : key)}
-              >
-                {label}
-              </button>
+            {TAG_ROWS.map((row, rowIdx) => (
+              <div key={rowIdx} className="tag-row">
+                {row.map(key => {
+                  const { label, color, bg } = TAGS[key];
+                  return (
+                    <button
+                      key={key}
+                      className={`tag-option${selected === key ? ' selected' : ''}`}
+                      style={{ '--tag-color': color, '--tag-bg': bg }}
+                      onClick={() => setSelected(selected === key ? null : key)}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
             ))}
             {selected && (
               <button
