@@ -11,7 +11,11 @@
       "Bash(node --experimental-sqlite --check src/routes/creditCards.js)",
       "Bash(node --experimental-sqlite --check src/parsers/isracard.js)",
       "Bash(node --experimental-sqlite --check src/parsers/max.js)",
-      "Bash(node --experimental-sqlite --check src/parsers/creditCardParsers.js)"
+      "Bash(node --experimental-sqlite --check src/parsers/creditCardParsers.js)",
+      "Skill(claude-api)",
+      "Bash(sqlite3 dinero.db \"DELETE FROM merchant_categories;\")",
+      "Bash(sqlite3 dinero.db \"SELECT COUNT\\(*\\) FROM merchant_categories;\")",
+      "Bash(node --experimental-sqlite clear-categories.js)"
     ]
   }
 }

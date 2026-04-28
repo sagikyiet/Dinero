@@ -89,6 +89,12 @@ function initSchema(db) {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS merchant_categories (
+      merchant_name TEXT PRIMARY KEY,
+      category TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE INDEX IF NOT EXISTS idx_transactions_month_id ON transactions(month_id);
     CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
     CREATE INDEX IF NOT EXISTS idx_months_year_month ON months(year, month);

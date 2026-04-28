@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { fetchCCTransactions, tagCCTransaction } from '../api';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { fetchCCTransactions, tagCCTransaction, categorizeMerchant, overrideCategory } from '../api';
+import { CATEGORIES, CATEGORY_LABELS } from '../categories';
 import { TAGS } from '../tags';
 import TagModal from './TagModal';
 
@@ -58,6 +59,19 @@ export default function CreditCardTransactionsView() {
   const [sortDir, setSortDir] = useState('asc');
 
   const [page, setPage] = useState(1);
+  const [categories, setCategories] = useState({}); // { [merchant]: category }
+  const [editingTxId, setEditingTxId] = useState(null);
+  const fetchedRef = useRef(new Set()); // merchants already fetched or in-flight
+
+  async function handleCategoryOverride(txId, merchantName, category) {
+    setCategories(prev => ({ ...prev, [merchantName]: category }));
+    setEditingTxId(null);
+    try {
+      await overrideCategory(merchantName, category);
+    } catch (err) {
+      console.error('Category override failed:', err);
+    }
+  }
 
   const loadData = useCallback(() => {
     setLoading(true);
@@ -123,6 +137,23 @@ export default function CreditCardTransactionsView() {
 
   const paginated = sorted.slice(0, page * PAGE_SIZE);
   const hasMore = paginated.length < sorted.length;
+
+  const paginatedMerchants = [...new Set(
+    paginated.map(tx => tx.merchant).filter(Boolean)
+  )].sort().join('\x00');
+
+  useEffect(() => {
+    const unique = [...new Set(
+      paginated.map(tx => tx.merchant).filter(m => m && !fetchedRef.current.has(m))
+    )];
+    if (!unique.length) return;
+    unique.forEach(m => fetchedRef.current.add(m));
+    unique.forEach(merchant => {
+      categorizeMerchant(merchant)
+        .then(({ category }) => setCategories(prev => ({ ...prev, [merchant]: category })))
+        .catch(() => fetchedRef.current.delete(merchant));
+    });
+  }, [paginatedMerchants]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const total = useMemo(() => filtered.reduce((s, t) => s + (t.amount || 0), 0), [filtered]);
 
@@ -233,7 +264,43 @@ export default function CreditCardTransactionsView() {
                       )}
                     </td>
                     <td className="num-col debit-col">{fmt(tx.amount, tx.currency)}</td>
-                    <td>{tx.category && <span className="badge cc-category-badge">{tx.category}</span>}</td>
+                    <td>
+                      {editingTxId === tx.id ? (
+                        <select
+                          autoFocus
+                          value={categories[tx.merchant] || ''}
+                          onChange={e => handleCategoryOverride(tx.id, tx.merchant, e.target.value)}
+                          onBlur={() => setEditingTxId(null)}
+                          style={{ fontSize: '0.72rem', borderRadius: '0.25rem', padding: '0.1rem 0.2rem' }}
+                        >
+                          <option value="" disabled>בחר קטגוריה</option>
+                          {CATEGORIES.map(cat => (
+                            <option key={cat} value={cat}>
+                              {CATEGORY_LABELS[cat].emoji} {CATEGORY_LABELS[cat].label}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (() => {
+                        const catDef = tx.merchant ? CATEGORY_LABELS[categories[tx.merchant]] : null;
+                        return catDef ? (
+                          <span
+                            title="לחץ לשינוי קטגוריה"
+                            onClick={() => setEditingTxId(tx.id)}
+                            style={{
+                              fontSize: '0.72rem',
+                              background: '#f1f5f9',
+                              color: '#475569',
+                              borderRadius: '0.25rem',
+                              padding: '0.125rem 0.4rem',
+                              whiteSpace: 'nowrap',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {catDef.emoji} {catDef.label}
+                          </span>
+                        ) : null;
+                      })()}
+                    </td>
                     <td>
                       {tx.card_name ? (
                         <span className="badge badge-cc">{tx.card_name}</span>

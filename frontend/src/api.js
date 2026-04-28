@@ -119,6 +119,20 @@ export const fetchCCTransactions = (params = {}) => {
   return request(`/credit-cards/transactions${qs ? '?' + qs : ''}`);
 };
 
+export const categorizeMerchant = (merchantName) =>
+  request('/categorize', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ merchantName }),
+  });
+
+export const overrideCategory = (merchantName, category) =>
+  request('/categorize/override', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ merchantName, category }),
+  });
+
 export async function uploadFiles(formData) {
   const res = await fetch(`${BASE}/upload`, { method: 'POST', body: formData });
   if (!res.ok) {

@@ -1,6 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { TAGS } from '../tags';
 import TagModal from './TagModal';
+import { categorizeMerchant, overrideCategory } from '../api';
+import { CATEGORIES, CATEGORY_LABELS } from '../categories';
 
 const fmt = (n) =>
   n != null
@@ -28,7 +30,20 @@ export default function TransactionTable({ transactions, onUpdate }) {
   const [sortCol, setSortCol] = useState(null);   // null = default (date desc)
   const [sortDir, setSortDir] = useState('asc');
   const [page, setPage] = useState(1);
+  const [categories, setCategories] = useState({}); // { [description]: category }
+  const [editingTxId, setEditingTxId] = useState(null);
+  const fetchedRef = useRef(new Set()); // descriptions already fetched or in-flight
   const PAGE_SIZE = 50;
+
+  async function handleCategoryOverride(txId, merchantName, category) {
+    setCategories(prev => ({ ...prev, [merchantName]: category }));
+    setEditingTxId(null);
+    try {
+      await overrideCategory(merchantName, category);
+    } catch (err) {
+      console.error('Category override failed:', err);
+    }
+  }
 
   function handleSort(col) {
     if (sortCol === col) {
@@ -82,6 +97,25 @@ export default function TransactionTable({ transactions, onUpdate }) {
 
   const paginated = filtered.slice(0, page * PAGE_SIZE);
   const hasMore = paginated.length < filtered.length;
+
+  // Stable string key: sorted unique descriptions — changes only when the visible set changes,
+  // not when sort order changes. Used as the useEffect dependency.
+  const paginatedDescriptions = [...new Set(
+    paginated.map(tx => tx.description).filter(Boolean)
+  )].sort().join('\x00');
+
+  useEffect(() => {
+    const unique = [...new Set(
+      paginated.map(tx => tx.description).filter(d => d && !fetchedRef.current.has(d))
+    )];
+    if (!unique.length) return;
+    unique.forEach(d => fetchedRef.current.add(d));
+    unique.forEach(description => {
+      categorizeMerchant(description)
+        .then(({ category }) => setCategories(prev => ({ ...prev, [description]: category })))
+        .catch(() => fetchedRef.current.delete(description));
+    });
+  }, [paginatedDescriptions]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totals = useMemo(() => ({
     debit: filtered.reduce((s, t) => s + (t.debit || 0), 0),
@@ -152,6 +186,7 @@ export default function TransactionTable({ transactions, onUpdate }) {
             <tr>
               <th className="sortable" onClick={() => handleSort('date')}>תאריך <SortArrow col="date" /></th>
               <th className="sortable" onClick={() => handleSort('description')}>תיאור <SortArrow col="description" /></th>
+              <th>קטגוריה</th>
               <th className="sortable" onClick={() => handleSort('bank')}>בנק <SortArrow col="bank" /></th>
               <th className="num-col sortable" onClick={() => handleSort('debit')}>חובה <SortArrow col="debit" /></th>
               <th className="num-col sortable" onClick={() => handleSort('credit')}>זכות <SortArrow col="credit" /></th>
@@ -181,6 +216,43 @@ export default function TransactionTable({ transactions, onUpdate }) {
                       </span>
                     )}
                   </td>
+                  <td className="category-cell">
+                    {editingTxId === tx.id ? (
+                      <select
+                        autoFocus
+                        value={categories[tx.description] || ''}
+                        onChange={e => handleCategoryOverride(tx.id, tx.description, e.target.value)}
+                        onBlur={() => setEditingTxId(null)}
+                        style={{ fontSize: '0.72rem', borderRadius: '0.25rem', padding: '0.1rem 0.2rem' }}
+                      >
+                        <option value="" disabled>בחר קטגוריה</option>
+                        {CATEGORIES.map(cat => (
+                          <option key={cat} value={cat}>
+                            {CATEGORY_LABELS[cat].emoji} {CATEGORY_LABELS[cat].label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (() => {
+                      const catDef = tx.description ? CATEGORY_LABELS[categories[tx.description]] : null;
+                      return catDef ? (
+                        <span
+                          title="לחץ לשינוי קטגוריה"
+                          onClick={() => setEditingTxId(tx.id)}
+                          style={{
+                            fontSize: '0.72rem',
+                            background: '#f1f5f9',
+                            color: '#475569',
+                            borderRadius: '0.25rem',
+                            padding: '0.125rem 0.4rem',
+                            whiteSpace: 'nowrap',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {catDef.emoji} {catDef.label}
+                        </span>
+                      ) : null;
+                    })()}
+                  </td>
                   <td>
                     <span className={`badge badge-bank bank-${tx.bank}`}>
                       {BANK_LABELS[tx.bank]}
@@ -204,7 +276,7 @@ export default function TransactionTable({ transactions, onUpdate }) {
           </tbody>
           <tfoot>
             <tr className="totals-row">
-              <td colSpan={3}>סה"כ ({filtered.length} פעולות)</td>
+              <td colSpan={4}>סה"כ ({filtered.length} פעולות)</td>
               <td className="num-col debit-col">{fmt(totals.debit)}</td>
               <td className="num-col credit-col">{fmt(totals.credit)}</td>
               <td />

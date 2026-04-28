@@ -77,7 +77,7 @@ function parseMax(buffer) {
         currency: getCell(row, colMap.currency) || 'ILS',
         original_amount: originalAmount,
         original_currency: getCell(row, colMap.original_currency),
-        category: getCell(row, colMap.category),
+        category: null,
         card_last4: getCell(row, colMap.card_last4),
         source_company: 'max',
         notes: getCell(row, colMap.notes),
