@@ -70,7 +70,7 @@ router.get('/category-breakdown', (req, res) => {
                COALESCE(SUM(t.debit), 0) AS amount
         FROM transactions t
         LEFT JOIN merchant_categories mc ON mc.merchant_name = t.description
-        WHERE t.debit > 0 AND (t.tag IS NULL OR t.tag = '')
+        WHERE t.debit > 0 AND t.is_credit_card = 0 AND (t.tag IS NULL OR t.tag = '')
         GROUP BY category
       `).all();
 
@@ -103,7 +103,7 @@ router.get('/category-breakdown', (req, res) => {
                COALESCE(SUM(t.debit), 0) AS amount
         FROM transactions t
         LEFT JOIN merchant_categories mc ON mc.merchant_name = t.description
-        WHERE t.debit > 0 AND t.month_id = ? AND (t.tag IS NULL OR t.tag = '')
+        WHERE t.debit > 0 AND t.is_credit_card = 0 AND t.month_id = ? AND (t.tag IS NULL OR t.tag = '')
         GROUP BY COALESCE(mc.category, 'other')
       `).all(monthId);
 
@@ -170,7 +170,7 @@ router.get('/category-trend', (req, res) => {
         FROM transactions t
         JOIN months m ON t.month_id = m.id
         LEFT JOIN merchant_categories mc ON mc.merchant_name = t.description
-        WHERE t.debit > 0 AND (t.tag IS NULL OR t.tag = '') AND COALESCE(mc.category, 'other') = ?
+        WHERE t.debit > 0 AND t.is_credit_card = 0 AND (t.tag IS NULL OR t.tag = '') AND COALESCE(mc.category, 'other') = ?
         GROUP BY period
       `).all(source);
 
@@ -211,7 +211,7 @@ router.get('/category-trend', (req, res) => {
                COALESCE(SUM(t.debit), 0) AS total
         FROM transactions t
         JOIN months m ON t.month_id = m.id
-        WHERE t.debit > 0 AND t.tag = 'large_expense'
+        WHERE t.debit > 0 AND t.is_credit_card = 0 AND t.tag = 'large_expense'
         GROUP BY period
       `).all();
 
@@ -235,10 +235,12 @@ router.get('/category-trend', (req, res) => {
       return res.json({ periods });
     }
 
-    // Non-category, non-special filters: bank transactions only, excluding tagged
-    let where = 't.debit > 0 AND (t.tag IS NULL OR t.tag = \'\')';
-    if (source === 'bank') where += ' AND t.is_credit_card = 0';
-    if (source === 'cc')   where += ' AND t.is_credit_card = 1';
+    // Non-category, non-special filters: bank transactions only, excluding tagged.
+    // 'cc' source targets CC billing charges (is_credit_card=1).
+    // All other sources target direct bank expenses (is_credit_card=0).
+    const where = source === 'cc'
+      ? "t.debit > 0 AND t.is_credit_card = 1 AND (t.tag IS NULL OR t.tag = '')"
+      : "t.debit > 0 AND t.is_credit_card = 0 AND (t.tag IS NULL OR t.tag = '')";
 
     const rows = db.prepare(`
       SELECT printf('%04d-%02d', m.year, m.month) AS period,
@@ -286,14 +288,14 @@ router.get('/drill', (req, res) => {
     }
 
     // --- Bank transactions ---
-    let bankWhere = filter === 'special'
-      ? "t.debit > 0 AND t.tag = 'large_expense'"
-      : "t.debit > 0 AND (t.tag IS NULL OR t.tag = '')";
+    // 'cc' filter = billing charges (is_credit_card=1); everything else = direct expenses (is_credit_card=0)
+    let bankWhere;
+    if (filter === 'cc')      bankWhere = "t.debit > 0 AND t.is_credit_card = 1 AND (t.tag IS NULL OR t.tag = '')";
+    else if (filter === 'special') bankWhere = "t.debit > 0 AND t.is_credit_card = 0 AND t.tag = 'large_expense'";
+    else                      bankWhere = "t.debit > 0 AND t.is_credit_card = 0 AND (t.tag IS NULL OR t.tag = '')";
     const bankParams = [];
 
     if (monthId !== null) { bankWhere += ' AND t.period_id = ?'; bankParams.push(monthId); }
-    if (filter === 'bank') bankWhere += ' AND t.is_credit_card = 0';
-    if (filter === 'cc')   bankWhere += ' AND t.is_credit_card = 1';
     if (isCategory) {
       bankWhere += " AND COALESCE(mc.category,'other') = ?";
       bankParams.push(filter);

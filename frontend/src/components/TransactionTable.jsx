@@ -217,7 +217,7 @@ export default function TransactionTable({ transactions, onUpdate }) {
                     )}
                   </td>
                   <td className="category-cell">
-                    {editingTxId === tx.id ? (
+                    {!tx.is_credit_card && editingTxId === tx.id ? (
                       <select
                         autoFocus
                         value={categories[tx.description] || ''}
@@ -232,7 +232,7 @@ export default function TransactionTable({ transactions, onUpdate }) {
                           </option>
                         ))}
                       </select>
-                    ) : (() => {
+                    ) : (!tx.is_credit_card && (() => {
                       const catDef = tx.description ? CATEGORY_LABELS[categories[tx.description]] : null;
                       return catDef ? (
                         <span
@@ -251,7 +251,7 @@ export default function TransactionTable({ transactions, onUpdate }) {
                           {catDef.emoji} {catDef.label}
                         </span>
                       ) : null;
-                    })()}
+                    })())}
                   </td>
                   <td>
                     <span className={`badge badge-bank bank-${tx.bank}`}>

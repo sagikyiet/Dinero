@@ -106,6 +106,7 @@ export default function CategoryPieChart({ periods }) {
   }
 
   return (
+    <>
     <div className="card" style={{ marginBottom: '1.5rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
         <h3 className="card-title" style={{ margin: 0 }}>פירוט הוצאות לפי קטגוריה</h3>
@@ -228,5 +229,6 @@ export default function CategoryPieChart({ periods }) {
         onCategoryChanged={refreshData}
       />
     )}
+    </>
   );
 }
