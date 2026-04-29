@@ -126,6 +126,18 @@ export const categorizeMerchant = (merchantName) =>
     body: JSON.stringify({ merchantName }),
   });
 
+export const fetchPeriodSummary = () =>
+  request('/insights/period-summary');
+
+export const fetchDrillDown = (filter, period = 'all', owner = 'both') =>
+  request(`/insights/drill?${new URLSearchParams({ filter, period, owner })}`);
+
+export const fetchCategoryBreakdown = (period = 'current', owner = 'both') =>
+  request(`/insights/category-breakdown?${new URLSearchParams({ period, owner })}`);
+
+export const fetchCategoryTrend = (source = 'all') =>
+  request(`/insights/category-trend?${new URLSearchParams({ source })}`);
+
 export const overrideCategory = (merchantName, category) =>
   request('/categorize/override', {
     method: 'POST',

@@ -15,7 +15,16 @@
       "Skill(claude-api)",
       "Bash(sqlite3 dinero.db \"DELETE FROM merchant_categories;\")",
       "Bash(sqlite3 dinero.db \"SELECT COUNT\\(*\\) FROM merchant_categories;\")",
-      "Bash(node --experimental-sqlite clear-categories.js)"
+      "Bash(node --experimental-sqlite clear-categories.js)",
+      "Bash(curl *)",
+      "Bash(node --experimental-sqlite scripts/test-insights.js)",
+      "Bash(node --experimental-sqlite scripts/check-tags.js)",
+      "Bash(node --experimental-sqlite -e \"require\\('dotenv'\\).config\\(\\); const {getDb}=require\\('./src/db'\\); const db=getDb\\(\\); console.log\\('period_id in transactions:', db.prepare\\(\\\\\"PRAGMA table_info\\(transactions\\)\\\\\"\\).all\\(\\).map\\(c=>c.name\\).includes\\('period_id'\\)\\); console.log\\('period_id in credit_card_transactions:', db.prepare\\(\\\\\"PRAGMA table_info\\(credit_card_transactions\\)\\\\\"\\).all\\(\\).map\\(c=>c.name\\).includes\\('period_id'\\)\\);\")",
+      "Bash(node --experimental-sqlite scripts/migrate-period-id.js)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(f\\\\\"{x['category']:15} {x['amount']:>8} \\({x['percentage']}%\\)\\\\\"\\) for x in d['data']]; print\\(f\\\\\"\\\\nperiod={d['period']}  total categories={len\\(d['data']\\)}\\\\\"\\)\")",
+      "Bash(node -e \"const d=JSON.parse\\(require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\)\\); console.log\\('categories:', d.data.length, '| top:', d.data[0]?.category, d.data[0]?.amount\\)\")",
+      "Bash(node --experimental-sqlite scripts/debug-special.js)",
+      "Bash(node --experimental-sqlite -e ' *)"
     ]
   }
 }

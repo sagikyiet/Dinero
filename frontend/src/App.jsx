@@ -123,7 +123,7 @@ export default function App() {
             className={`nav-btn${view === 'history' ? ' active' : ''}`}
             onClick={() => handleViewChange('history')}
           >
-            היסטוריה
+            תובנות
           </button>
           <button
             className={`nav-btn${view === 'files' ? ' active' : ''}`}

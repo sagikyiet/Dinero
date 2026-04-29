@@ -83,16 +83,16 @@ router.post('/', upload.fields([
 
     const insertTx = db.prepare(`
       INSERT INTO transactions (
-        month_id, bank, date, value_date, description, reference,
+        month_id, period_id, bank, date, value_date, description, reference,
         debit, credit, balance, note, is_credit_card, credit_card_name
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     db.exec('BEGIN TRANSACTION');
     try {
       for (const tx of allTransactions) {
         insertTx.run(
-          monthId, tx.bank, tx.date, tx.value_date, tx.description,
+          monthId, monthId, tx.bank, tx.date, tx.value_date, tx.description,
           tx.reference, tx.debit, tx.credit, tx.balance, tx.note,
           tx.is_credit_card, tx.credit_card_name
         );

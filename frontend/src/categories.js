@@ -1,3 +1,23 @@
+export const CATEGORY_COLORS = {
+  groceries:     '#10b981',
+  home:          '#3b82f6',
+  fuel:          '#f59e0b',
+  car:           '#ef4444',
+  medical:       '#06b6d4',
+  entertainment: '#8b5cf6',
+  clothing:      '#ec4899',
+  subscriptions: '#64748b',
+  cats:          '#f97316',
+  insurance:     '#0ea5e9',
+  fees:          '#6b7280',
+  electronics:   '#4f46e5',
+  grooming:      '#d946ef',
+  vacation:      '#14b8a6',
+  gifts:         '#f43f5e',
+  sports:        '#84cc16',
+  other:         '#94a3b8',
+};
+
 export const CATEGORIES = [
   'groceries', 'home', 'fuel', 'car', 'medical', 'entertainment',
   'clothing', 'subscriptions', 'cats', 'insurance', 'fees',

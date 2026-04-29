@@ -40,7 +40,12 @@ router.get('/history/all', (req, res) => {
     SELECT
       m.id, m.year, m.month, m.savings,
       COALESCE(SUM(t.debit), 0) AS total_expenses,
-      COALESCE(SUM(t.credit), 0) AS total_income
+      COALESCE(SUM(t.credit), 0) AS total_income,
+      COALESCE(SUM(
+        CASE WHEN t.tag = 'savings'
+        THEN COALESCE(t.debit, 0) + COALESCE(t.credit, 0)
+        ELSE 0 END
+      ), 0) AS savings_tagged
     FROM months m
     LEFT JOIN transactions t ON t.month_id = m.id
     GROUP BY m.id
@@ -212,15 +217,15 @@ router.post('/:id/files/:bank', upload.single('file'), (req, res) => {
 
     const insertTx = db.prepare(`
       INSERT INTO transactions (
-        month_id, bank, date, value_date, description, reference,
+        month_id, period_id, bank, date, value_date, description, reference,
         debit, credit, balance, note, is_credit_card, credit_card_name
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     db.exec('BEGIN TRANSACTION');
     try {
       for (const tx of transactions) {
-        insertTx.run(monthId, tx.bank, tx.date, tx.value_date, tx.description,
+        insertTx.run(monthId, monthId, tx.bank, tx.date, tx.value_date, tx.description,
           tx.reference, tx.debit, tx.credit, tx.balance, tx.note,
           tx.is_credit_card, tx.credit_card_name);
       }

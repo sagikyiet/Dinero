@@ -30,13 +30,25 @@ router.post('/upload', upload.single('file'), (req, res) => {
     const owner    = req.body.owner || 'joint';
     const period   = (req.body.period || '').trim();
 
+    const db = getDb();
+
+    // Resolve the billing period string (YYYY-MM) to months.id so transactions
+    // are grouped by upload period rather than individual transaction dates.
+    let periodId = null;
+    if (period) {
+      const [py, pm] = period.split('-').map(Number);
+      if (!isNaN(py) && !isNaN(pm)) {
+        const mrow = db.prepare('SELECT id FROM months WHERE year = ? AND month = ?').get(py, pm);
+        periodId = mrow ? mrow.id : null;
+      }
+    }
+
     const ext = path.extname(req.file.originalname) || '.xlsx';
     const savedName = `cc_${parser.company}_${Date.now()}${ext}`;
     const savedPath = path.join(UPLOADS_DIR, savedName);
     fs.mkdirSync(UPLOADS_DIR, { recursive: true });
     fs.writeFileSync(savedPath, req.file.buffer);
 
-    const db = getDb();
     const uploadResult = db.prepare(`
       INSERT INTO cc_uploads (filename, filepath, company, transaction_count, card_name, owner, period)
       VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -45,17 +57,17 @@ router.post('/upload', upload.single('file'), (req, res) => {
 
     const insertTx = db.prepare(`
       INSERT INTO credit_card_transactions (
-        upload_id, date, merchant, amount, currency,
+        upload_id, period_id, date, merchant, amount, currency,
         original_amount, original_currency, category,
         card_last4, source_company, notes, month_key, card_name, owner
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     db.exec('BEGIN TRANSACTION');
     try {
       for (const tx of transactions) {
         insertTx.run(
-          uploadId, tx.date, tx.merchant, tx.amount, tx.currency,
+          uploadId, periodId, tx.date, tx.merchant, tx.amount, tx.currency,
           tx.original_amount, tx.original_currency, tx.category,
           tx.card_last4, tx.source_company, tx.notes, tx.month_key,
           cardName, owner
@@ -120,8 +132,17 @@ router.patch('/files/:id/meta', (req, res) => {
   const owner    = req.body.owner || 'joint';
   const period   = (req.body.period || '').trim();
 
+  let metaPeriodId = null;
+  if (period) {
+    const [py, pm] = period.split('-').map(Number);
+    if (!isNaN(py) && !isNaN(pm)) {
+      const mrow = db.prepare('SELECT id FROM months WHERE year = ? AND month = ?').get(py, pm);
+      metaPeriodId = mrow ? mrow.id : null;
+    }
+  }
+
   db.prepare('UPDATE cc_uploads SET card_name = ?, owner = ?, period = ? WHERE id = ?').run(cardName, owner, period, uploadId);
-  db.prepare('UPDATE credit_card_transactions SET card_name = ?, owner = ? WHERE upload_id = ?').run(cardName, owner, uploadId);
+  db.prepare('UPDATE credit_card_transactions SET card_name = ?, owner = ?, period_id = ? WHERE upload_id = ?').run(cardName, owner, metaPeriodId, uploadId);
 
   res.json({ success: true });
 });
@@ -160,19 +181,29 @@ router.post('/files/:id/replace', upload.single('file'), (req, res) => {
 
     db.prepare('DELETE FROM credit_card_transactions WHERE upload_id = ?').run(uploadId);
 
+    // Resolve billing period to months.id for the replaced file
+    let replacePeriodId = null;
+    if (existing.period) {
+      const [py, pm] = existing.period.split('-').map(Number);
+      if (!isNaN(py) && !isNaN(pm)) {
+        const mrow = db.prepare('SELECT id FROM months WHERE year = ? AND month = ?').get(py, pm);
+        replacePeriodId = mrow ? mrow.id : null;
+      }
+    }
+
     const insertTx = db.prepare(`
       INSERT INTO credit_card_transactions (
-        upload_id, date, merchant, amount, currency,
+        upload_id, period_id, date, merchant, amount, currency,
         original_amount, original_currency, category,
         card_last4, source_company, notes, month_key, card_name, owner
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     db.exec('BEGIN TRANSACTION');
     try {
       for (const tx of transactions) {
         insertTx.run(
-          uploadId, tx.date, tx.merchant, tx.amount, tx.currency,
+          uploadId, replacePeriodId, tx.date, tx.merchant, tx.amount, tx.currency,
           tx.original_amount, tx.original_currency, tx.category,
           tx.card_last4, tx.source_company, tx.notes, tx.month_key,
           existing.card_name, existing.owner

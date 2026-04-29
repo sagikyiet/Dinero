@@ -31,6 +31,7 @@ function initSchema(db) {
     CREATE TABLE IF NOT EXISTS transactions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       month_id INTEGER NOT NULL REFERENCES months(id) ON DELETE CASCADE,
+      period_id INTEGER REFERENCES months(id),
       bank TEXT NOT NULL,
       date TEXT NOT NULL,
       value_date TEXT,
@@ -75,6 +76,7 @@ function initSchema(db) {
     CREATE TABLE IF NOT EXISTS credit_card_transactions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       upload_id INTEGER NOT NULL REFERENCES cc_uploads(id) ON DELETE CASCADE,
+      period_id INTEGER REFERENCES months(id),
       date TEXT NOT NULL,
       merchant TEXT,
       amount REAL,
@@ -117,6 +119,8 @@ function initSchema(db) {
   try { db.exec(`ALTER TABLE credit_card_transactions ADD COLUMN card_name TEXT DEFAULT ''`); } catch (_) {}
   try { db.exec(`ALTER TABLE credit_card_transactions ADD COLUMN owner TEXT DEFAULT 'joint'`); } catch (_) {}
   try { db.exec(`ALTER TABLE cc_uploads ADD COLUMN period TEXT DEFAULT ''`); } catch (_) {}
+  try { db.exec(`ALTER TABLE transactions ADD COLUMN period_id INTEGER REFERENCES months(id)`); } catch (_) {}
+  try { db.exec(`ALTER TABLE credit_card_transactions ADD COLUMN period_id INTEGER REFERENCES months(id)`); } catch (_) {}
   // Back-fill period for existing uploads that have transactions but no period set
   try {
     db.exec(`

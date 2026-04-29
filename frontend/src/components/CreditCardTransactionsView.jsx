@@ -50,7 +50,6 @@ export default function CreditCardTransactionsView() {
   const [cardNameFilter, setCardNameFilter] = useState('all');
   const [ownerFilter, setOwnerFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [monthKeyFilter, setMonthKeyFilter] = useState('all');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
@@ -103,10 +102,9 @@ export default function CreditCardTransactionsView() {
     return data.transactions.filter(tx => {
       if (cardNameFilter !== 'all' && tx.card_name !== cardNameFilter) return false;
       if (ownerFilter !== 'all' && tx.owner !== ownerFilter) return false;
-      if (categoryFilter !== 'all' && tx.category !== categoryFilter) return false;
-      if (monthKeyFilter !== 'all' && tx.month_key !== monthKeyFilter) return false;
+      if (categoryFilter !== 'all' && categories[tx.merchant] !== categoryFilter) return false;
       if (search && !(tx.merchant || '').toLowerCase().includes(search.toLowerCase()) &&
-          !(tx.category || '').toLowerCase().includes(search.toLowerCase()) &&
+          !(categories[tx.merchant] || '').toLowerCase().includes(search.toLowerCase()) &&
           !(tx.notes || '').toLowerCase().includes(search.toLowerCase())) return false;
       const fromISO = parseDMY(fromDate);
       const toISO   = parseDMY(toDate);
@@ -114,7 +112,7 @@ export default function CreditCardTransactionsView() {
       if (toISO   && tx.date > toISO)   return false;
       return true;
     });
-  }, [data, cardNameFilter, ownerFilter, categoryFilter, monthKeyFilter, search, fromDate, toDate]);
+  }, [data, cardNameFilter, ownerFilter, categoryFilter, categories, search, fromDate, toDate]);
 
   const sorted = useMemo(() => {
     if (!sortCol) return [...filtered].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
@@ -124,7 +122,7 @@ export default function CreditCardTransactionsView() {
         case 'date':     av = a.date || '';          bv = b.date || '';          break;
         case 'merchant': av = a.merchant || '';      bv = b.merchant || '';      break;
         case 'amount':   av = a.amount ?? -1;        bv = b.amount ?? -1;        break;
-        case 'category': av = a.category || '';      bv = b.category || '';      break;
+        case 'category': av = categories[a.merchant] || ''; bv = categories[b.merchant] || ''; break;
         case 'card':     av = a.card_name || '';     bv = b.card_name || '';     break;
         case 'owner':    av = a.owner || '';          bv = b.owner || '';          break;
         case 'tag':      av = a.tag || '';            bv = b.tag || '';            break;
@@ -133,7 +131,7 @@ export default function CreditCardTransactionsView() {
       const cmp = typeof av === 'string' ? av.localeCompare(bv, 'he') : av - bv;
       return sortDir === 'asc' ? cmp : -cmp;
     });
-  }, [filtered, sortCol, sortDir]);
+  }, [filtered, sortCol, sortDir, categories]);
 
   const paginated = sorted.slice(0, page * PAGE_SIZE);
   const hasMore = paginated.length < sorted.length;
@@ -159,12 +157,12 @@ export default function CreditCardTransactionsView() {
 
   function resetFilters() {
     setSearch(''); setCardNameFilter('all'); setOwnerFilter('all');
-    setCategoryFilter('all'); setMonthKeyFilter('all');
+    setCategoryFilter('all');
     setFromDate(''); setToDate(''); setPage(1);
   }
 
   const hasFilters = search || cardNameFilter !== 'all' || ownerFilter !== 'all' ||
-    categoryFilter !== 'all' || monthKeyFilter !== 'all' || fromDate || toDate;
+    categoryFilter !== 'all' || fromDate || toDate;
 
   if (loading) return <div className="loading">טוען...</div>;
   if (error) return <div className="error-banner">{error}</div>;
@@ -200,18 +198,12 @@ export default function CreditCardTransactionsView() {
               <option key={o} value={o}>{OWNER_LABELS[o] || o}</option>
             ))}
           </select>
-          {data.categories.length > 0 && (
-            <select value={categoryFilter} onChange={e => { setCategoryFilter(e.target.value); setPage(1); }}>
-              <option value="all">כל הקטגוריות</option>
-              {data.categories.map(c => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          )}
-          <select value={monthKeyFilter} onChange={e => { setMonthKeyFilter(e.target.value); setPage(1); }}>
-            <option value="all">כל החודשים</option>
-            {data.monthKeys.map(mk => (
-              <option key={mk} value={mk}>{monthKeyLabel(mk)}</option>
+          <select value={categoryFilter} onChange={e => { setCategoryFilter(e.target.value); setPage(1); }}>
+            <option value="all">כל הקטגוריות</option>
+            {CATEGORIES.map(cat => (
+              <option key={cat} value={cat}>
+                {CATEGORY_LABELS[cat].emoji} {CATEGORY_LABELS[cat].label}
+              </option>
             ))}
           </select>
           <input
@@ -265,7 +257,7 @@ export default function CreditCardTransactionsView() {
                     </td>
                     <td className="num-col debit-col">{fmt(tx.amount, tx.currency)}</td>
                     <td>
-                      {editingTxId === tx.id ? (
+                      {!tx.tag && (editingTxId === tx.id ? (
                         <select
                           autoFocus
                           value={categories[tx.merchant] || ''}
@@ -299,7 +291,7 @@ export default function CreditCardTransactionsView() {
                             {catDef.emoji} {catDef.label}
                           </span>
                         ) : null;
-                      })()}
+                      })())}
                     </td>
                     <td>
                       {tx.card_name ? (
