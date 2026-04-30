@@ -3,12 +3,11 @@ import { fetchMonths, fetchDashboard, fetchTransactions, fetchHistory, updateMon
 import UploadPanel from './components/UploadPanel';
 import MonthlySummary from './components/MonthlySummary';
 import CreditCardBreakdown from './components/CreditCardBreakdown';
-import TransactionTable from './components/TransactionTable';
 import HistoryView from './components/HistoryView';
 import FilesView from './components/FilesView';
 import SpecialTransactions from './components/SpecialTransactions';
 import MonthSelector from './components/MonthSelector';
-import CreditCardTransactionsView from './components/CreditCardTransactionsView';
+import PeulotView from './components/PeulotView';
 
 const MONTH_NAMES = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
 
@@ -117,7 +116,13 @@ export default function App() {
             className={`nav-btn${view === 'dashboard' ? ' active' : ''}`}
             onClick={() => handleViewChange('dashboard')}
           >
-            לוח בקרה
+            סטטוס
+          </button>
+          <button
+            className={`nav-btn${view === 'peulot' ? ' active' : ''}`}
+            onClick={() => handleViewChange('peulot')}
+          >
+            פעולות
           </button>
           <button
             className={`nav-btn${view === 'history' ? ' active' : ''}`}
@@ -130,12 +135,6 @@ export default function App() {
             onClick={() => handleViewChange('files')}
           >
             קבצים
-          </button>
-          <button
-            className={`nav-btn${view === 'credit-cards' ? ' active' : ''}`}
-            onClick={() => handleViewChange('credit-cards')}
-          >
-            כרטיסי אשראי
           </button>
         </nav>
         <button className="btn-upload" onClick={() => setShowUpload(true)}>
@@ -239,11 +238,6 @@ export default function App() {
                     />
                   )}
 
-                  <TransactionTable
-                    transactions={transactions}
-                    monthId={selectedId}
-                    onUpdate={handleRefresh}
-                  />
                 </>
               )}
             </main>
@@ -262,10 +256,29 @@ export default function App() {
           </main>
         )}
 
-        {view === 'credit-cards' && (
-          <main className="main full">
-            <CreditCardTransactionsView />
-          </main>
+        {view === 'peulot' && (
+          <>
+            <aside className="sidebar">
+              <MonthSelector
+                months={months}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onDeleted={async () => {
+                  const data = await loadMonths();
+                  setSelectedId(data[0]?.id ?? null);
+                  setDashboard(null);
+                  setTransactions([]);
+                }}
+              />
+            </aside>
+            <main className="main">
+              <PeulotView
+                transactions={transactions}
+                monthId={selectedId}
+                onUpdate={handleRefresh}
+              />
+            </main>
+          </>
         )}
       </div>
     </div>

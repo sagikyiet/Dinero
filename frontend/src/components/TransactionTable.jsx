@@ -136,7 +136,7 @@ export default function TransactionTable({ transactions, onUpdate }) {
   return (
     <div className="card table-card">
       <div className="table-header">
-        <h3 className="card-title">פעולות</h3>
+        <h3 className="card-title">פעולות עו"ש</h3>
         <span className="tx-count-label">{filtered.length} פעולות</span>
       </div>
 
