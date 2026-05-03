@@ -4,7 +4,7 @@ import CreditCardTransactionsView from './CreditCardTransactionsView';
 
 const LS_KEY = 'peulot_active_tab';
 
-export default function PeulotView({ transactions, monthId, onUpdate }) {
+export default function PeulotView({ transactions, monthId, monthKey, demoNames, onUpdate }) {
   const [activeTab, setActiveTab] = useState(
     () => localStorage.getItem(LS_KEY) || 'bank'
   );
@@ -36,10 +36,11 @@ export default function PeulotView({ transactions, monthId, onUpdate }) {
           transactions={transactions}
           monthId={monthId}
           onUpdate={onUpdate}
+          demoNames={demoNames}
         />
       )}
       {activeTab === 'cc' && (
-        <CreditCardTransactionsView />
+        <CreditCardTransactionsView initialMonthKey={monthKey} demoNames={demoNames} />
       )}
     </div>
   );
