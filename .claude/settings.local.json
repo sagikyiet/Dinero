@@ -24,7 +24,8 @@
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(f\\\\\"{x['category']:15} {x['amount']:>8} \\({x['percentage']}%\\)\\\\\"\\) for x in d['data']]; print\\(f\\\\\"\\\\nperiod={d['period']}  total categories={len\\(d['data']\\)}\\\\\"\\)\")",
       "Bash(node -e \"const d=JSON.parse\\(require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\)\\); console.log\\('categories:', d.data.length, '| top:', d.data[0]?.category, d.data[0]?.amount\\)\")",
       "Bash(node --experimental-sqlite scripts/debug-special.js)",
-      "Bash(node --experimental-sqlite -e ' *)"
+      "Bash(node --experimental-sqlite -e ' *)",
+      "Bash(Get-ChildItem *)"
     ]
   }
 }

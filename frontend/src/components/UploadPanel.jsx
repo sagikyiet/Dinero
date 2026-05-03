@@ -9,10 +9,14 @@ const MONTHS = [
   { v: 7, l: 'יולי'  }, { v: 8, l: 'אוגוסט' }, { v: 9, l: 'ספטמבר' },
   { v: 10, l: 'אוקטובר' }, { v: 11, l: 'נובמבר' }, { v: 12, l: 'דצמבר' },
 ];
-const OWNER_LABELS = { sagi: 'שגיא', maya: 'מאיה', joint: 'משותף' };
 const CC_YEAR_RANGE = [-2, -1, 0, 1].map(d => NOW.getFullYear() + d);
 
-export default function UploadPanel({ onSuccess, onClose }) {
+export default function UploadPanel({ onSuccess, onClose, demoNames = {} }) {
+  const OWNER_LABELS = {
+    sagi:  demoNames.male   || 'שגיא',
+    maya:  demoNames.female || 'מאיה',
+    joint: 'משותף',
+  };
   const [uploadType, setUploadType] = useState(null); // null | 'bank' | 'cc'
 
   // ── Bank state ──────────────────────────────────────────────────────────────

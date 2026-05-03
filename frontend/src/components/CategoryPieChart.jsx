@@ -51,7 +51,9 @@ function renderActiveShape(props) {
   );
 }
 
-export default function CategoryPieChart({ periods }) {
+export default function CategoryPieChart({ periods, demoNames = {} }) {
+  const maleName   = demoNames.male   || 'שגיא';
+  const femaleName = demoNames.female || 'מאיה';
   const [periodFilter, setPeriodFilter] = useState(
     () => localStorage.getItem('insights_pie_period') || 'current'
   );
@@ -120,8 +122,8 @@ export default function CategoryPieChart({ periods }) {
           </select>
           <select value={ownerFilter} onChange={e => setOwnerFilter(e.target.value)}>
             <option value="both">שנינו</option>
-            <option value="sagi">שגיא</option>
-            <option value="maya">מאיה</option>
+            <option value="sagi">{maleName}</option>
+            <option value="maya">{femaleName}</option>
           </select>
         </div>
       </div>

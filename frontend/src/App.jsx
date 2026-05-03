@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchMonths, fetchDashboard, fetchTransactions, fetchHistory, updateMonth } from './api';
+import { fetchMonths, fetchDashboard, fetchTransactions, fetchHistory, updateMonth, fetchDemoStatus, loadDemo, clearDemo } from './api';
 import UploadPanel from './components/UploadPanel';
 import MonthlySummary from './components/MonthlySummary';
 import CreditCardBreakdown from './components/CreditCardBreakdown';
@@ -8,6 +8,7 @@ import FilesView from './components/FilesView';
 import SpecialTransactions from './components/SpecialTransactions';
 import MonthSelector from './components/MonthSelector';
 import PeulotView from './components/PeulotView';
+import DemoBanner from './components/DemoBanner';
 
 const MONTH_NAMES = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
 
@@ -25,6 +26,20 @@ export default function App() {
   const [showNotes, setShowNotes] = useState(false);
   const [notesText, setNotesText] = useState('');
   const [notesSaving, setNotesSaving] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoNames, setDemoNames] = useState({ male: 'שגיא', female: 'מאיה' });
+
+  const checkDemoStatus = useCallback(async () => {
+    try {
+      const { demo_mode, demo_male_name, demo_female_name } = await fetchDemoStatus();
+      setIsDemoMode(demo_mode);
+      setDemoNames({
+        male:   (demo_mode && demo_male_name)   ? demo_male_name   : 'שגיא',
+        female: (demo_mode && demo_female_name) ? demo_female_name : 'מאיה',
+      });
+    } catch (_) {}
+  }, []);
 
   const loadMonths = useCallback(async () => {
     try {
@@ -56,10 +71,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    checkDemoStatus();
     loadMonths().then((data) => {
       if (data.length > 0) setSelectedId(data[0].id);
     });
-  }, [loadMonths]);
+  }, [loadMonths, checkDemoStatus]);
 
   useEffect(() => {
     if (selectedId) loadDashboard(selectedId);
@@ -99,7 +115,47 @@ export default function App() {
     if (selectedId) loadDashboard(selectedId);
   }
 
+  async function handleDemoLoad() {
+    setDemoLoading(true);
+    setError(null);
+    try {
+      await loadDemo();
+      await checkDemoStatus();
+      const data = await loadMonths();
+      if (data.length > 0) {
+        setSelectedId(data[0].id);
+        setView('dashboard');
+      }
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setDemoLoading(false);
+    }
+  }
+
+  async function handleDemoClear() {
+    setDemoLoading(true);
+    setError(null);
+    try {
+      await clearDemo();
+      setIsDemoMode(false);
+      setDemoNames({ male: 'שגיא', female: 'מאיה' });
+      setMonths([]);
+      setSelectedId(null);
+      setDashboard(null);
+      setTransactions([]);
+      setView('dashboard');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setDemoLoading(false);
+    }
+  }
+
   const selectedMonth = months.find(m => m.id === selectedId);
+  const selectedMonthKey = selectedMonth
+    ? `${selectedMonth.year}-${String(selectedMonth.month).padStart(2, '0')}`
+    : null;
 
   return (
     <div className="app" dir="rtl">
@@ -137,15 +193,34 @@ export default function App() {
             קבצים
           </button>
         </nav>
-        <button className="btn-upload" onClick={() => setShowUpload(true)}>
+        {!isDemoMode && (
+          <button
+            className="btn-demo"
+            disabled={demoLoading}
+            onClick={handleDemoLoad}
+          >
+            {demoLoading ? 'טוען...' : 'נסה דמו'}
+          </button>
+        )}
+        <button
+          className="btn-upload"
+          disabled={isDemoMode}
+          onClick={isDemoMode ? undefined : () => setShowUpload(true)}
+          title={isDemoMode ? 'במצב דמו לא ניתן להעלות קבצים' : undefined}
+        >
           + העלאת קבצים
         </button>
       </header>
+
+      {isDemoMode && (
+        <DemoBanner onReset={handleDemoLoad} onExit={handleDemoClear} />
+      )}
 
       {showUpload && (
         <UploadPanel
           onSuccess={handleUploadSuccess}
           onClose={() => setShowUpload(false)}
+          demoNames={demoNames}
         />
       )}
 
@@ -224,7 +299,7 @@ export default function App() {
                     </div>
                   )}
 
-                  <MonthlySummary summary={dashboard.summary} transactions={transactions} />
+                  <MonthlySummary summary={dashboard.summary} transactions={transactions} demoNames={demoNames} />
 
                   <SpecialTransactions transactions={[...transactions, ...(dashboard.ccTagged || [])]} summary={dashboard.summary} />
 
@@ -235,6 +310,7 @@ export default function App() {
                       ccFilesTotal={dashboard.ccFilesTotal ?? 0}
                       ccFilesCount={dashboard.ccFilesCount ?? 0}
                       onUpdate={handleRefresh}
+                      demoNames={demoNames}
                     />
                   )}
 
@@ -246,13 +322,13 @@ export default function App() {
 
         {view === 'history' && (
           <main className="main full">
-            <HistoryView history={history} />
+            <HistoryView history={history} demoNames={demoNames} />
           </main>
         )}
 
         {view === 'files' && (
           <main className="main full">
-            <FilesView key={filesRefreshKey} months={months} onChanged={loadMonths} />
+            <FilesView key={filesRefreshKey} months={months} onChanged={loadMonths} demoNames={demoNames} />
           </main>
         )}
 
@@ -275,6 +351,8 @@ export default function App() {
               <PeulotView
                 transactions={transactions}
                 monthId={selectedId}
+                monthKey={selectedMonthKey}
+                demoNames={demoNames}
                 onUpdate={handleRefresh}
               />
             </main>

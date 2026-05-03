@@ -97,6 +97,12 @@ function initSchema(db) {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE INDEX IF NOT EXISTS idx_transactions_month_id ON transactions(month_id);
     CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
     CREATE INDEX IF NOT EXISTS idx_months_year_month ON months(year, month);
@@ -104,6 +110,7 @@ function initSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_cct_month_key ON credit_card_transactions(month_key);
     CREATE INDEX IF NOT EXISTS idx_cct_date ON credit_card_transactions(date);
   `);
+  try { db.exec(`INSERT OR IGNORE INTO settings (key, value) VALUES ('demo_mode', 'false')`); } catch (_) {}
 
   // Migrations for existing databases
   try { db.exec(`ALTER TABLE transactions ADD COLUMN tag TEXT`); } catch (_) {}

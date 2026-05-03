@@ -68,6 +68,22 @@ body {
 .nav-btn:hover { color: white; background: rgba(255,255,255,.1); }
 .nav-btn.active { color: white; background: rgba(255,255,255,.15); }
 
+.btn-demo {
+  background: #f59e0b;
+  color: #1c1917;
+  border: none;
+  padding: 0.45rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-family: inherit;
+  font-weight: 600;
+  transition: background .15s;
+  white-space: nowrap;
+}
+.btn-demo:hover:not(:disabled) { background: #d97706; }
+.btn-demo:disabled { opacity: .65; cursor: not-allowed; }
+
 .btn-upload {
   background: #10b981;
   color: white;
@@ -80,7 +96,43 @@ body {
   font-weight: 500;
   transition: background .15s;
 }
-.btn-upload:hover { background: #059669; }
+.btn-upload:hover:not(:disabled) { background: #059669; }
+.btn-upload:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ─── Demo Banner ────────────────────────────────────────────────── */
+.demo-banner {
+  background: #f59e0b;
+  color: #1c1917;
+  padding: 0.6rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-bottom: 2px solid #d97706;
+  position: sticky;
+  top: 64px;
+  z-index: 99;
+  box-shadow: 0 2px 6px rgba(0,0,0,.12);
+}
+.demo-banner-text { flex: 1; }
+.demo-banner-actions { display: flex; gap: 0.5rem; }
+.btn-demo-action {
+  background: rgba(0,0,0,.15);
+  border: 1px solid rgba(0,0,0,.2);
+  padding: 0.3rem 0.85rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-family: inherit;
+  font-weight: 600;
+  color: #1c1917;
+  transition: background .15s;
+  white-space: nowrap;
+}
+.btn-demo-action:hover:not(:disabled) { background: rgba(0,0,0,.25); }
+.btn-demo-action.exit { background: rgba(0,0,0,.2); }
+.btn-demo-action:disabled { opacity: .6; cursor: not-allowed; }
 
 .body { display: flex; flex: 1; }
 

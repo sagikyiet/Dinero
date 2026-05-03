@@ -145,6 +145,14 @@ export const overrideCategory = (merchantName, category) =>
     body: JSON.stringify({ merchantName, category }),
   });
 
+export const fetchDemoStatus = () => request('/demo/status');
+
+export const loadDemo = () =>
+  request('/demo/load', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+
+export const clearDemo = () =>
+  request('/demo/clear', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+
 export async function uploadFiles(formData) {
   const res = await fetch(`${BASE}/upload`, { method: 'POST', body: formData });
   if (!res.ok) {

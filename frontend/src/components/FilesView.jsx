@@ -7,7 +7,7 @@ import {
 
 const MONTH_NAMES  = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
 const COMPANY_LABELS = { isracard: 'ישראכרט', max: 'מקס' };
-const OWNER_LABELS   = { sagi: 'שגיא', maya: 'מאיה', joint: 'משותף' };
+const DEFAULT_OWNER_LABELS = { sagi: 'שגיא', maya: 'מאיה', joint: 'משותף' };
 
 function periodLabel(key) {
   if (!key) return 'ללא תקופה';
@@ -16,7 +16,7 @@ function periodLabel(key) {
 }
 
 // ─── CC metadata form (period + card name + owner) ────────────────────────────
-function CCMetaForm({ initialCardName = '', initialOwner = 'joint', initialPeriod, onConfirm, onCancel, confirmLabel = 'העלה' }) {
+function CCMetaForm({ initialCardName = '', initialOwner = 'joint', initialPeriod, onConfirm, onCancel, confirmLabel = 'העלה', ownerLabels = DEFAULT_OWNER_LABELS }) {
   const now = new Date();
   const [cardName, setCardName] = useState(initialCardName);
   const [owner,    setOwner]    = useState(initialOwner);
@@ -241,7 +241,7 @@ function CCPreviewPanel({ uploadId }) {
 }
 
 // ─── Single CC file row ───────────────────────────────────────────────────────
-function CCFileRow({ file, onChanged }) {
+function CCFileRow({ file, onChanged, ownerLabels = DEFAULT_OWNER_LABELS }) {
   const [showPreview,   setShowPreview]   = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [loading,       setLoading]       = useState(false);
@@ -274,7 +274,7 @@ function CCFileRow({ file, onChanged }) {
             : <span className="files-filename">{file.filename}</span>
           }
           {file.card_name && <span className="files-tx-count" style={{ fontWeight: 600 }}>{file.card_name}</span>}
-          {file.owner && <span className="badge cc-owner-badge">{OWNER_LABELS[file.owner] || file.owner}</span>}
+          {file.owner && <span className="badge cc-owner-badge">{ownerLabels[file.owner] || file.owner}</span>}
           <span className="files-tx-count">{file.transaction_count} פעולות</span>
         </div>
         <div className="files-actions">
@@ -299,7 +299,7 @@ function CCFileRow({ file, onChanged }) {
 }
 
 // ─── One period card: always shows both bank + CC sub-sections ────────────────
-function PeriodCard({ periodKey, bankMonth, ccFiles, onBankChanged, onCCChanged }) {
+function PeriodCard({ periodKey, bankMonth, ccFiles, onBankChanged, onCCChanged, ownerLabels = DEFAULT_OWNER_LABELS }) {
   return (
     <div className="card files-month-card">
       <div className="files-month-header">
@@ -328,7 +328,7 @@ function PeriodCard({ periodKey, bankMonth, ccFiles, onBankChanged, onCCChanged 
         <span className="files-sub-label">כרטיסי אשראי</span>
         {ccFiles.length > 0 ? (
           <div className="files-banks">
-            {ccFiles.map(f => <CCFileRow key={f.id} file={f} onChanged={onCCChanged} />)}
+            {ccFiles.map(f => <CCFileRow key={f.id} file={f} onChanged={onCCChanged} ownerLabels={ownerLabels} />)}
           </div>
         ) : (
           <div className="files-sub-empty">אין קבצי אשראי לתקופה זו</div>
@@ -339,7 +339,12 @@ function PeriodCard({ periodKey, bankMonth, ccFiles, onBankChanged, onCCChanged 
 }
 
 // ─── Main view ────────────────────────────────────────────────────────────────
-export default function FilesView({ months, onChanged }) {
+export default function FilesView({ months, onChanged, demoNames = {} }) {
+  const ownerLabels = {
+    sagi:  demoNames.male   || 'שגיא',
+    maya:  demoNames.female || 'מאיה',
+    joint: 'משותף',
+  };
   const [ccFiles,     setCCFiles]   = useState([]);
   const [ccLoading,   setCCLoading] = useState(true);
   const [selectedKeys, setSelectedKeys] = useState(new Set());
@@ -443,6 +448,7 @@ export default function FilesView({ months, onChanged }) {
               ccFiles={pcc}
               onBankChanged={onChanged}
               onCCChanged={loadCCFiles}
+              ownerLabels={ownerLabels}
             />
           ))}
         </div>

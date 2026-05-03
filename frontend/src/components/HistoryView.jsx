@@ -7,7 +7,7 @@ const MONTH_NAMES = ['ינואר','פברואר','מרץ','אפריל','מאי',
 const fmt = (n) =>
   new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(n);
 
-export default function HistoryView({ history }) {
+export default function HistoryView({ history, demoNames = {} }) {
   if (!history.length) {
     return (
       <div className="empty-state">
@@ -29,7 +29,7 @@ export default function HistoryView({ history }) {
 
       <PeriodSummaryChart />
       <div style={{ marginBottom: '1.5rem' }}><CategoryStackedBar /></div>
-      <CategoryPieChart periods={periods} />
+      <CategoryPieChart periods={periods} demoNames={demoNames} />
 
       <div className="card">
         <h3 className="card-title">טבלת סיכום</h3>
