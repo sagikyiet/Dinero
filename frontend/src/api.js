@@ -47,12 +47,23 @@ export const tagTransaction = (txId, tag, permanent = false, tag_note = '', even
   });
 
 export const fetchEvents = () => request('/events');
+export const fetchEventsSummary = () => request('/events/summary');
+export const fetchEventTransactions = (id) => request(`/events/${id}/transactions`);
 
 export const createEvent = (name, description = '') =>
   request('/events', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, description }),
+  });
+
+export const deleteEvent = (id) => request(`/events/${id}`, { method: 'DELETE' });
+
+export const updateEvent = (id, name) =>
+  request(`/events/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
   });
 
 
