@@ -12,49 +12,53 @@ router.get('/', (req, res) => {
   const params = [];
 
   if (month_id) {
-    conditions.push('month_id = ?');
+    conditions.push('t.month_id = ?');
     params.push(parseInt(month_id));
   }
 
   if (bank && bank !== 'all') {
-    conditions.push('bank = ?');
+    conditions.push('t.bank = ?');
     params.push(bank);
   }
 
   if (type === 'debit') {
-    conditions.push('debit IS NOT NULL AND debit > 0');
+    conditions.push('t.debit IS NOT NULL AND t.debit > 0');
   } else if (type === 'credit') {
-    conditions.push('credit IS NOT NULL AND credit > 0');
+    conditions.push('t.credit IS NOT NULL AND t.credit > 0');
   }
 
   if (search && search.trim()) {
-    conditions.push('description LIKE ?');
+    conditions.push('t.description LIKE ?');
     params.push(`%${search.trim()}%`);
   }
 
   if (from) {
-    conditions.push('date >= ?');
+    conditions.push('t.date >= ?');
     params.push(from);
   }
 
   if (to) {
-    conditions.push('date <= ?');
+    conditions.push('t.date <= ?');
     params.push(to);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   const transactions = db.prepare(`
-    SELECT * FROM transactions ${where}
-    ORDER BY date DESC, id DESC
+    SELECT t.*, e.name AS event_name
+    FROM transactions t
+    LEFT JOIN events e ON e.id = t.event_id
+    ${where}
+    ORDER BY t.date DESC, t.id DESC
   `).all(...params);
 
   const totals = db.prepare(`
     SELECT
-      COALESCE(SUM(debit), 0)  AS total_debit,
-      COALESCE(SUM(credit), 0) AS total_credit,
+      COALESCE(SUM(t.debit), 0)  AS total_debit,
+      COALESCE(SUM(t.credit), 0) AS total_credit,
       COUNT(*) AS count
-    FROM transactions ${where}
+    FROM transactions t
+    ${where}
   `).get(...params);
 
   res.json({ transactions, totals });
@@ -64,14 +68,17 @@ router.get('/', (req, res) => {
 router.patch('/:id/tag', (req, res) => {
   const db = getDb();
   const txId = parseInt(req.params.id);
-  const { tag, tag_note, permanent } = req.body; // tag may be null to clear
+  const { tag, tag_note, permanent, event_id } = req.body; // tag may be null to clear
 
   const tx = db.prepare('SELECT * FROM transactions WHERE id = ?').get(txId);
   if (!tx) return res.status(404).json({ error: 'פעולה לא נמצאה' });
 
-  db.prepare('UPDATE transactions SET tag = ?, tag_note = ? WHERE id = ?').run(
+  const resolvedEventId = event_id !== undefined ? event_id : (tx.event_id ?? null);
+  console.log('[PATCH tag bank] txId=%d tag=%s event_id_received=%s resolved=%s', txId, tag, event_id, resolvedEventId);
+  db.prepare('UPDATE transactions SET tag = ?, tag_note = ?, event_id = ? WHERE id = ?').run(
     tag ?? null,
     tag ? (tag_note ?? '') : '',
+    resolvedEventId,
     txId
   );
 

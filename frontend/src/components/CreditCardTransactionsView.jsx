@@ -341,7 +341,7 @@ export default function CreditCardTransactionsView({ initialMonthKey, demoNames 
                     <td>
                       <button
                         className={`tag-btn${tx.tag ? ' tagged' : ''}`}
-                        onClick={() => setTagModal({ ...tx, description: tx.merchant || '(ללא שם עסק)' })}
+                        onClick={() => setTagModal({ ...tx, description: tx.merchant || '(ללא שם עסק)', debit: tx.amount })}
                         title={tagDef ? tagDef.label : 'תייג עסקה'}
                         style={tagDef ? { background: tagDef.bg, color: tagDef.color } : {}}
                       >

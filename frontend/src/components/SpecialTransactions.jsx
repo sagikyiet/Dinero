@@ -4,8 +4,55 @@ import { TAGS, isSalaryTag } from '../tags';
 const fmt = (n) =>
   new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 2 }).format(n);
 
-function Section({ title, rows, amountKey, amountClass, headerClass }) {
+function EventGroupRow({ eventName, txs, amountKey, amountClass, isExpanded, onToggle }) {
+  const total = txs.reduce((s, tx) => s + (tx[amountKey] || 0), 0);
+  return (
+    <div className="special-event-group">
+      <div className="special-event-row" onClick={onToggle}>
+        <span className="special-event-arrow">{isExpanded ? '▼' : '▶'}</span>
+        <span className="special-desc special-event-name">{eventName}</span>
+        <span className="special-event-count">{txs.length} פעולות</span>
+        <span className="special-event-total-label">סה״כ</span>
+        <span className={`special-amount ${amountClass}`}>{fmt(total)}</span>
+      </div>
+      {isExpanded && txs.map(tx => {
+        const tag = TAGS[tx.tag];
+        const amount = tx[amountKey] || 0;
+        return (
+          <div key={tx.id} className="special-row special-row-child">
+            <span className="special-date">{tx.date?.slice(0, 10)}</span>
+            <span className="special-desc" title={tx.tag_note ? tx.description : undefined}>
+              {tx.tag_note || tx.description}
+            </span>
+            <span
+              className="badge badge-tag special-tag"
+              style={{ background: tag.bg, color: tag.color }}
+            >
+              {tag.label}
+            </span>
+            <span className={`special-amount ${amountClass}`}>{fmt(amount)}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Section({ title, rows, amountKey, amountClass, headerClass, expandedEvents, onToggleEvent }) {
   const total = rows.reduce((s, tx) => s + (tx[amountKey] || 0), 0);
+
+  const standalone = rows.filter(tx => !tx.event_id);
+  const byEvent = useMemo(() => {
+    const map = {};
+    for (const tx of rows) {
+      if (tx.event_id) {
+        if (!map[tx.event_id]) map[tx.event_id] = [];
+        map[tx.event_id].push(tx);
+      }
+    }
+    return map;
+  }, [rows]);
+
   return (
     <div className={`special-section ${headerClass}`}>
       <div className="special-section-header">
@@ -15,7 +62,7 @@ function Section({ title, rows, amountKey, amountClass, headerClass }) {
         )}
       </div>
       <div className="special-rows">
-        {rows.map(tx => {
+        {standalone.map(tx => {
           const tag = TAGS[tx.tag];
           const amount = tx[amountKey] || 0;
           return (
@@ -32,6 +79,22 @@ function Section({ title, rows, amountKey, amountClass, headerClass }) {
               </span>
               <span className={`special-amount ${amountClass}`}>{fmt(amount)}</span>
             </div>
+          );
+        })}
+        {Object.entries(byEvent).map(([eventId, txs]) => {
+          const eid = Number(eventId);
+          // event_name comes directly from the backend JOIN — no async lookup needed
+          const eventName = txs[0]?.event_name || `אירוע #${eventId}`;
+          return (
+            <EventGroupRow
+              key={eventId}
+              eventName={eventName}
+              txs={txs}
+              amountKey={amountKey}
+              amountClass={amountClass}
+              isExpanded={expandedEvents.has(eid)}
+              onToggle={() => onToggleEvent(eid)}
+            />
           );
         })}
       </div>
@@ -55,8 +118,21 @@ function NormalizedItem({ label, amount, colorClass, tooltip }) {
 }
 
 export default function SpecialTransactions({ transactions, summary = {} }) {
+  const [expandedEvents, setExpandedEvents] = useState(new Set());
+
+  function toggleEvent(id) {
+    setExpandedEvents(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
   const { largeIncomes, largeExpenses, routineIncomes, routineExpenses } = useMemo(() => {
     const tagged = transactions.filter(tx => tx.tag && TAGS[tx.tag] && !isSalaryTag(tx.tag));
+    console.log('[SpecialTransactions] tagged:', tagged.map(tx => ({
+      id: tx.id, tag: tx.tag, event_id: tx.event_id, event_name: tx.event_name,
+    })));
     const byDate = (a, b) => b.date.localeCompare(a.date);
     return {
       largeIncomes:    tagged.filter(tx => tx.tag === 'large_income').sort(byDate),
@@ -77,14 +153,16 @@ export default function SpecialTransactions({ transactions, summary = {} }) {
   const normExpense = (summary.total_expenses ?? 0) - sum(largeExpenses, 'debit');
   const normBalance = normIncome - normExpense;
 
+  const sectionProps = { expandedEvents, onToggleEvent: toggleEvent };
+
   return (
     <div className="card special-card">
       <h3 className="card-title">פעולות גדולות</h3>
       <div className="special-columns">
-        <Section title="הכנסות שגרה"   rows={routineIncomes}  amountKey="credit" amountClass="routine-income-total" headerClass="special-section-routine-income" />
-        <Section title="הוצאות שגרה"   rows={routineExpenses} amountKey="debit"  amountClass="routine-expense-total" headerClass="special-section-routine-expense" />
-        <Section title="הכנסות מיוחדות" rows={largeIncomes}    amountKey="credit" amountClass="income-total"         headerClass="special-section-income" />
-        <Section title="הוצאות מיוחדות" rows={largeExpenses}   amountKey="debit"  amountClass="expense-total"         headerClass="special-section-expense" />
+        <Section title="הכנסות שגרה"    rows={routineIncomes}  amountKey="credit" amountClass="routine-income-total"  headerClass="special-section-routine-income"  {...sectionProps} />
+        <Section title="הוצאות שגרה"    rows={routineExpenses} amountKey="debit"  amountClass="routine-expense-total" headerClass="special-section-routine-expense" {...sectionProps} />
+        <Section title="הכנסות מיוחדות" rows={largeIncomes}    amountKey="credit" amountClass="income-total"          headerClass="special-section-income"          {...sectionProps} />
+        <Section title="הוצאות מיוחדות" rows={largeExpenses}   amountKey="debit"  amountClass="expense-total"         headerClass="special-section-expense"         {...sectionProps} />
       </div>
       <div className="special-totals">
         <div className="special-total-item special-total-income">
