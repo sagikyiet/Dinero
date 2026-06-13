@@ -11,3 +11,13 @@ export const TAGS = {
 export function isSalaryTag(tag) {
   return tag === 'salary_sagi' || tag === 'salary_maya';
 }
+
+export function getTagLabels(demoNames = {}) {
+  const male   = demoNames.male   || 'שגיא';
+  const female = demoNames.female || 'מאיה';
+  return {
+    ...TAGS,
+    salary_sagi: { ...TAGS.salary_sagi, label: `משכורת ${male}` },
+    salary_maya: { ...TAGS.salary_maya, label: `משכורת ${female}` },
+  };
+}

@@ -45,7 +45,9 @@ function BreakdownRow({ label, amount, color, alwaysShow }) {
   );
 }
 
-export default function MonthlySummary({ summary, transactions = [] }) {
+export default function MonthlySummary({ summary, transactions = [], demoNames = {} }) {
+  const maleName   = demoNames.male   || 'שגיא';
+  const femaleName = demoNames.female || 'מאיה';
   const [expandIncome,   setExpandIncome]   = useState(false);
   const [expandExpenses, setExpandExpenses] = useState(false);
   const [expandSavings,  setExpandSavings]  = useState(false);
@@ -81,8 +83,8 @@ export default function MonthlySummary({ summary, transactions = [] }) {
           <span className="summary-amount">{fmt(summary.total_income)}</span>
           {expandIncome && (
             <div className="breakdown-list" onClick={e => e.stopPropagation()}>
-              <BreakdownRow label="משכורת שגיא"  amount={bd.income.salarySagi}     color="var(--green)" alwaysShow />
-              <BreakdownRow label="משכורת מאיה"  amount={bd.income.salaryMaya}     color="var(--green)" alwaysShow />
+              <BreakdownRow label={`משכורת ${maleName}`}   amount={bd.income.salarySagi} color="var(--green)" alwaysShow />
+              <BreakdownRow label={`משכורת ${femaleName}`} amount={bd.income.salaryMaya} color="var(--green)" alwaysShow />
               <BreakdownRow label="עו״ש לאומי"   amount={bd.income.incomeLeumi}    color="var(--leumi)" />
               <BreakdownRow label="עו״ש פועלים"  amount={bd.income.incomeHapoalim} color="var(--hapoalim)" />
             </div>

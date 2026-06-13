@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TAGS } from '../tags';
+import { getTagLabels } from '../tags';
 import { tagTransaction } from '../api';
 
 const TAG_ROWS = [
@@ -7,7 +7,8 @@ const TAG_ROWS = [
   ['large_income', 'large_expense', 'routine_income', 'routine_expense'],
 ];
 
-export default function TagModal({ tx, onClose, onSaved, tagFn }) {
+export default function TagModal({ tx, onClose, onSaved, tagFn, demoNames = {} }) {
+  const TAGS = getTagLabels(demoNames);
   const [selected, setSelected] = useState(tx.tag ?? null);
   const [tagNote, setTagNote] = useState(tx.tag_note ?? '');
   const [permanent, setPermanent] = useState(false);

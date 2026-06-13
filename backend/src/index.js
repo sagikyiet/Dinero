@@ -11,6 +11,7 @@ const cardOwnersRoutes = require('./routes/cardOwners');
 const creditCardsRoutes = require('./routes/creditCards');
 const categorizeRoutes = require('./routes/categorize');
 const insightsRoutes = require('./routes/insights');
+const demoRoutes = require('./routes/demo');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -46,6 +47,7 @@ app.use('/api/card-owners', cardOwnersRoutes);
 app.use('/api/credit-cards', creditCardsRoutes);
 app.use('/api/categorize', categorizeRoutes);
 app.use('/api/insights', insightsRoutes);
+app.use('/api/demo', demoRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', name: 'Dinero', version: '1.0.0' });

@@ -1,10 +1,9 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { fetchCCTransactions, tagCCTransaction, categorizeMerchant, overrideCategory } from '../api';
 import { CATEGORIES, CATEGORY_LABELS } from '../categories';
-import { TAGS } from '../tags';
+import { getTagLabels } from '../tags';
 import TagModal from './TagModal';
 
-const OWNER_LABELS = { sagi: 'שגיא', maya: 'מאיה', joint: 'משותף' };
 const OWNER_STYLES = {
   sagi:  { color: '#059669', bg: '#ecfdf5' },
   maya:  { color: '#0284c7', bg: '#f0f9ff' },
@@ -39,11 +38,21 @@ function parseDMY(str) {
 
 const PAGE_SIZE = 50;
 
-export default function CreditCardTransactionsView() {
+export default function CreditCardTransactionsView({ initialMonthKey, demoNames = {} }) {
+  const TAGS = getTagLabels(demoNames);
+  const ownerLabels = {
+    sagi:  demoNames.male   || 'שגיא',
+    maya:  demoNames.female || 'מאיה',
+    joint: 'משותף',
+  };
+
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [tagModal, setTagModal] = useState(null);
+
+  // Period filter (syncs with selected sidebar month)
+  const [monthKeyFilter, setMonthKeyFilter] = useState(initialMonthKey || '');
 
   // Filters
   const [search, setSearch] = useState('');
@@ -81,6 +90,11 @@ export default function CreditCardTransactionsView() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  useEffect(() => {
+    setMonthKeyFilter(initialMonthKey || '');
+    setPage(1);
+  }, [initialMonthKey]);
+
   function handleSort(col) {
     if (sortCol === col) {
       if (sortDir === 'asc') setSortDir('desc');
@@ -97,9 +111,16 @@ export default function CreditCardTransactionsView() {
     return <span className="sort-arrow active">{sortDir === 'asc' ? '↑' : '↓'}</span>;
   }
 
+  const availableMonthKeys = useMemo(() => {
+    if (!data?.transactions) return [];
+    const keys = [...new Set(data.transactions.map(t => t.month_key).filter(Boolean))];
+    return keys.sort().reverse();
+  }, [data]);
+
   const filtered = useMemo(() => {
     if (!data) return [];
     return data.transactions.filter(tx => {
+      if (monthKeyFilter && tx.month_key !== monthKeyFilter) return false;
       if (cardNameFilter !== 'all' && tx.card_name !== cardNameFilter) return false;
       if (ownerFilter !== 'all' && tx.owner !== ownerFilter) return false;
       if (categoryFilter !== 'all' && categories[tx.merchant] !== categoryFilter) return false;
@@ -112,7 +133,7 @@ export default function CreditCardTransactionsView() {
       if (toISO   && tx.date > toISO)   return false;
       return true;
     });
-  }, [data, cardNameFilter, ownerFilter, categoryFilter, categories, search, fromDate, toDate]);
+  }, [data, monthKeyFilter, cardNameFilter, ownerFilter, categoryFilter, categories, search, fromDate, toDate]);
 
   const sorted = useMemo(() => {
     if (!sortCol) return [...filtered].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
@@ -177,6 +198,12 @@ export default function CreditCardTransactionsView() {
         </div>
 
         <div className="filters">
+          <select value={monthKeyFilter} onChange={e => { setMonthKeyFilter(e.target.value); setPage(1); }}>
+            <option value="">כל התקופות</option>
+            {availableMonthKeys.map(mk => (
+              <option key={mk} value={mk}>{monthKeyLabel(mk)}</option>
+            ))}
+          </select>
           <input
             className="filter-search"
             type="text"
@@ -195,7 +222,7 @@ export default function CreditCardTransactionsView() {
           <select value={ownerFilter} onChange={e => { setOwnerFilter(e.target.value); setPage(1); }}>
             <option value="all">כל הבעלים</option>
             {data.owners.map(o => (
-              <option key={o} value={o}>{OWNER_LABELS[o] || o}</option>
+              <option key={o} value={o}>{ownerLabels[o] || o}</option>
             ))}
           </select>
           <select value={categoryFilter} onChange={e => { setCategoryFilter(e.target.value); setPage(1); }}>
@@ -305,7 +332,7 @@ export default function CreditCardTransactionsView() {
                         const s = OWNER_STYLES[tx.owner];
                         return (
                           <span className="badge" style={s ? { background: s.bg, color: s.color } : {}}>
-                            {OWNER_LABELS[tx.owner] || tx.owner}
+                            {ownerLabels[tx.owner] || tx.owner}
                           </span>
                         );
                       })()}
@@ -358,6 +385,7 @@ export default function CreditCardTransactionsView() {
           onClose={() => setTagModal(null)}
           onSaved={loadData}
           tagFn={tagCCTransaction}
+          demoNames={demoNames}
         />
       )}
     </div>

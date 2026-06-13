@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { TAGS } from '../tags';
+import { getTagLabels } from '../tags';
 import TagModal from './TagModal';
 import { categorizeMerchant, overrideCategory } from '../api';
 import { CATEGORIES, CATEGORY_LABELS } from '../categories';
@@ -20,7 +20,8 @@ function parseDMY(str) {
   return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
 }
 
-export default function TransactionTable({ transactions, onUpdate }) {
+export default function TransactionTable({ transactions, onUpdate, demoNames = {} }) {
+  const TAGS = getTagLabels(demoNames);
   const [search, setSearch] = useState('');
   const [bankFilter, setBankFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -298,6 +299,7 @@ export default function TransactionTable({ transactions, onUpdate }) {
           tx={tagModal}
           onClose={() => setTagModal(null)}
           onSaved={onUpdate}
+          demoNames={demoNames}
         />
       )}
     </div>
