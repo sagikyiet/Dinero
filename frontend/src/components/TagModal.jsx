@@ -7,7 +7,7 @@ const TAG_ROWS = [
   ['large_income', 'large_expense', 'routine_income', 'routine_expense'],
 ];
 
-const EVENT_REQUIRED_TAGS = new Set(['large_income', 'large_expense', 'routine_income', 'routine_expense']);
+const EVENT_REQUIRED_TAGS = new Set(['large_income', 'large_expense']);
 
 export default function TagModal({ tx, onClose, onSaved, tagFn, demoNames = {} }) {
   const TAGS = getTagLabels(demoNames);
@@ -182,7 +182,7 @@ export default function TagModal({ tx, onClose, onSaved, tagFn, demoNames = {} }
                 )}
               </div>
               {eventMissing && (
-                <p className="event-field-error">נדרש שם אירוע עבור פעולות מיוחדות ושגרה</p>
+                <p className="event-field-error">נדרש שם אירוע עבור הכנסה גדולה והוצאה גדולה</p>
               )}
               {selectedEvent && (
                 <button

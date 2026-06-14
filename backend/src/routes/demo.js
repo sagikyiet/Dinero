@@ -24,6 +24,7 @@ function clearDbData(db) {
   db.exec('DELETE FROM merchant_categories');
   db.exec('DELETE FROM tag_rules');
   db.exec('DELETE FROM card_owners');
+  db.exec('DELETE FROM events');
 }
 
 function setDemoMode(db, enabled, maleName = null, femaleName = null) {
@@ -50,6 +51,13 @@ router.post('/load', (req, res) => {
         insertCat.run(name, cat);
       }
 
+      const insertEvent = db.prepare('INSERT INTO events (name) VALUES (?)');
+      const eventIdMap = {};
+      for (const ev of data.events) {
+        const r = insertEvent.run(ev.name);
+        eventIdMap[ev.key] = Number(r.lastInsertRowid);
+      }
+
       const insertMonth = db.prepare(`
         INSERT INTO months (year, month, savings, notes, leumi_filename, hapoalim_filename, leumi_filepath, hapoalim_filepath)
         VALUES (?, ?, 0, '', '', '', '', '')
@@ -57,8 +65,8 @@ router.post('/load', (req, res) => {
 
       const insertTx = db.prepare(`
         INSERT INTO transactions (month_id, period_id, bank, date, value_date, description, reference,
-          debit, credit, balance, note, is_special, is_credit_card, credit_card_name, tag, tag_note)
-        VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, NULL, 0, ?, ?, ?, '')
+          debit, credit, balance, note, is_special, is_credit_card, credit_card_name, tag, tag_note, event_id)
+        VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, NULL, 0, ?, ?, ?, '', ?)
       `);
 
       const insertUpload = db.prepare(`
@@ -70,8 +78,8 @@ router.post('/load', (req, res) => {
         INSERT INTO credit_card_transactions (
           upload_id, period_id, date, merchant, amount, currency,
           original_amount, original_currency, category, card_last4,
-          source_company, notes, month_key, card_name, owner, tag, tag_note)
-        VALUES (?, ?, ?, ?, ?, 'ILS', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          source_company, notes, month_key, card_name, owner, tag, tag_note, event_id)
+        VALUES (?, ?, ?, ?, ?, 'ILS', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       for (const period of data.periods) {
@@ -82,7 +90,8 @@ router.post('/load', (req, res) => {
           insertTx.run(
             monthId, monthId, 'leumi', tx.date, tx.date, tx.description,
             tx.debit ?? null, tx.credit ?? null, tx.balance ?? null,
-            tx.is_credit_card ?? 0, tx.credit_card_name ?? null, tx.tag ?? null
+            tx.is_credit_card ?? 0, tx.credit_card_name ?? null, tx.tag ?? null,
+            tx._eventKey ? (eventIdMap[tx._eventKey] ?? null) : null
           );
         }
 
@@ -90,7 +99,8 @@ router.post('/load', (req, res) => {
           insertTx.run(
             monthId, monthId, 'hapoalim', tx.date, tx.date, tx.description,
             tx.debit ?? null, tx.credit ?? null, tx.balance ?? null,
-            tx.is_credit_card ?? 0, tx.credit_card_name ?? null, tx.tag ?? null
+            tx.is_credit_card ?? 0, tx.credit_card_name ?? null, tx.tag ?? null,
+            tx._eventKey ? (eventIdMap[tx._eventKey] ?? null) : null
           );
         }
 
@@ -110,7 +120,8 @@ router.post('/load', (req, res) => {
               uploadId, monthId, tx.date, tx.merchant, tx.amount,
               tx.category, tx.card_last4, tx.source_company,
               tx.notes ?? null, tx.month_key, tx.card_name, tx.owner,
-              tx.tag ?? null, tx.tag_note ?? ''
+              tx.tag ?? null, tx.tag_note ?? '',
+              tx._eventKey ? (eventIdMap[tx._eventKey] ?? null) : null
             );
           }
         }

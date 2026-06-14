@@ -127,26 +127,41 @@ const MAX2_CATS = [
 
 // Special bank transactions per period (index 0=Nov2024 .. 4=Mar2025)
 const SPECIAL_BANK_DATA = [
-  [{ desc: 'בונוס רבעוני', isCredit: true, amount: 8500, tag: 'large_income', d1: 10, d2: 15 }],
-  [{ desc: 'תגמול שנתי', isCredit: true, amount: 12000, tag: 'large_income', d1: 8, d2: 12 }],
-  [{ desc: 'החזר מס הכנסה', isCredit: true, amount: 5600, tag: 'large_income', d1: 20, d2: 25 }],
-  [{ desc: 'תשלום פרילנס', isCredit: true, amount: 7200, tag: 'large_income', d1: 10, d2: 18 }],
+  [{ desc: 'בונוס רבעוני', isCredit: true, amount: 8500, tag: null, d1: 10, d2: 15 }],
+  [{ desc: 'תגמול שנתי', isCredit: true, amount: 12000, tag: null, d1: 8, d2: 12 }],
+  [{ desc: 'החזר מס הכנסה', isCredit: true, amount: 5600, tag: null, d1: 20, d2: 25 }],
+  [{ desc: 'תשלום פרילנס', isCredit: true, amount: 7200, tag: null, d1: 10, d2: 18 }],
   [
-    { desc: 'מענק יוצאי דופן', isCredit: true, amount: 4500, tag: 'large_income', d1: 15, d2: 20 },
-    { desc: 'ביטוח חיים שנתי', isCredit: false, amount: 3200, tag: 'large_expense', d1: 5, d2: 10 },
+    { desc: 'מענק יוצאי דופן', isCredit: true, amount: 4500, tag: null, d1: 15, d2: 20 },
+    { desc: 'ביטוח חיים שנתי', isCredit: false, amount: 3200, tag: null, d1: 5, d2: 10 },
   ],
 ];
 
 // Special CC transactions added to Max1 per period
 const SPECIAL_CC_DATA = [
   [],
-  [{ merchant: 'IKEA', category: 'home', amount: 3200, tag: 'large_expense' }],
-  [{ merchant: 'מוסך מורשה', category: 'car', amount: 2800, tag: 'large_expense' }],
+  [{ merchant: 'IKEA', category: 'home', amount: 3200, tag: null }],
+  [{ merchant: 'מוסך מורשה', category: 'car', amount: 2800, tag: null }],
   [
-    { merchant: 'ישרוטל אילת', category: 'vacation', amount: 2400, tag: 'large_expense' },
-    { merchant: 'El Al', category: 'vacation', amount: 1800, tag: 'large_expense' },
+    { merchant: 'ישרוטל אילת', category: 'vacation', amount: 2400, tag: null },
+    { merchant: 'El Al', category: 'vacation', amount: 1800, tag: null },
   ],
-  [{ merchant: 'iDigital', category: 'electronics', amount: 4200, tag: 'large_expense' }],
+  [{ merchant: 'iDigital', category: 'electronics', amount: 4200, tag: null }],
+];
+
+const DEMO_EVENTS = [
+  { key: 'wedding',               name: 'חתונה' },
+  { key: 'iceland',               name: 'חופשה באיסלנד' },
+  { key: 'portugal',              name: 'חופשה בפורטוגל' },
+  { key: 'ikea_upgrade',          name: 'שדרוג רהיטים IKEA' },
+  { key: 'annual_bonus_itay',     name: 'מענק שנתי איתי' },
+  { key: 'new_laptop',            name: 'מחשב נייד חדש' },
+  { key: 'tax_refund',            name: 'החזר מס הכנסה' },
+  { key: 'dental',                name: 'טיפול שיניים' },
+  { key: 'freelance',             name: 'תשלום פרילנס' },
+  { key: 'life_insurance',        name: 'ביטוח חיים שנתי' },
+  { key: 'new_iphone',            name: 'אייפון חדש' },
+  { key: 'quarterly_bonus_dana',  name: 'מענק רבעוני דנה' },
 ];
 
 // 7th Hapoalim transaction varies per period
@@ -382,6 +397,205 @@ function makeCCTxs(company, owner, last4, cardName, categories, specialItems, ye
   return txs;
 }
 
+function addEventTransactions(periods, maleName, femaleName) {
+  const i1Name = `ישראכרט ראשי - ${maleName}`;
+  const m1Name = `מקס ראשי - ${maleName}`;
+
+  function bankTx(year, month, desc, isCredit, amount, eventKey, tag) {
+    return {
+      date: rDate(year, month, 5, 25),
+      description: desc,
+      credit: isCredit ? amount : null,
+      debit: isCredit ? null : amount,
+      balance: null,
+      is_credit_card: 0,
+      credit_card_name: null,
+      tag,
+      _eventKey: eventKey,
+    };
+  }
+
+  function maxTx(year, month, merchant, amount, category, eventKey, tag) {
+    return {
+      date: rDate(year, month, 5, 25),
+      merchant, amount, category,
+      card_last4: '2109', source_company: 'max',
+      notes: null, month_key: `${year}-${String(month).padStart(2, '0')}`,
+      card_name: m1Name, owner: 'sagi',
+      tag, tag_note: '', _eventKey: eventKey,
+    };
+  }
+
+  function isracardTx(year, month, merchant, amount, category, eventKey, tag) {
+    return {
+      date: rDate(year, month, 5, 25),
+      merchant, amount, category,
+      card_last4: '4321', source_company: 'isracard',
+      notes: null, month_key: `${year}-${String(month).padStart(2, '0')}`,
+      card_name: i1Name, owner: 'sagi',
+      tag, tag_note: '', _eventKey: eventKey,
+    };
+  }
+
+  const [p0, p1, p2, p3, p4] = periods;
+  const { year: y0, month: m0 } = p0;
+  const { year: y1, month: m1 } = p1;
+  const { year: y2, month: m2 } = p2;
+  const { year: y3, month: m3 } = p3;
+  const { year: y4, month: m4 } = p4;
+
+  // --- WEDDING: periods 0,1,2 (planning) and 3 (wedding month) ---
+
+  // Period 0 (Nov) leumi - wedding planning
+  p0.leumiTransactions.push(
+    bankTx(y0, m0, 'מקדמה לאולם אירועים', false, 8000, 'wedding', 'large_expense'),
+    bankTx(y0, m0, 'מקדמה לצלם', false, 3500, 'wedding', 'large_expense'),
+  );
+
+  // Period 1 (Dec) leumi + CC - wedding planning
+  p1.leumiTransactions.push(
+    bankTx(y1, m1, "מקדמה לדיג'יי", false, 2500, 'wedding', 'large_expense'),
+  );
+  p1.ccUploads[2].transactions.push(
+    maxTx(y1, m1, 'טעימות קייטרינג', 800, 'other', 'wedding', 'large_expense'),
+  );
+  p1.ccUploads[0].transactions.push(
+    isracardTx(y1, m1, 'שמלת כלה מקדמה', 4000, 'clothing', 'wedding', 'large_expense'),
+  );
+
+  // Period 2 (Jan) leumi + CC - wedding planning
+  p2.leumiTransactions.push(
+    bankTx(y2, m2, 'השלמת תשלום צלם וידאו', false, 5000, 'wedding', 'large_expense'),
+  );
+  p2.ccUploads[2].transactions.push(
+    maxTx(y2, m2, 'פרחים לחתונה מקדמה', 1800, 'other', 'wedding', 'large_expense'),
+  );
+  p2.ccUploads[0].transactions.push(
+    isracardTx(y2, m2, 'הזמנות לחתונה', 600, 'other', 'wedding', 'large_expense'),
+  );
+
+  // Period 3 (Feb) - wedding month: expenses + income
+  p3.leumiTransactions.push(
+    bankTx(y3, m3, 'השלמת תשלום אולם', false, 22000, 'wedding', 'large_expense'),
+    bankTx(y3, m3, 'השלמת תשלום קייטרינג', false, 18000, 'wedding', 'large_expense'),
+    bankTx(y3, m3, 'מתנות חתונה העברה 1', true, 18000, 'wedding', 'large_income'),
+    bankTx(y3, m3, 'מתנות חתונה העברה 3', true, 12000, 'wedding', 'large_income'),
+    bankTx(y3, m3, 'החזר הוצאות מהורים', true, 9000, 'wedding', 'large_income'),
+  );
+  p3.hapoalimTransactions.push(
+    bankTx(y3, m3, 'מתנות חתונה העברה 2', true, 15000, 'wedding', 'large_income'),
+    bankTx(y3, m3, 'מתנות במעטפות', true, 8500, 'wedding', 'large_income'),
+  );
+  p3.ccUploads[2].transactions.push(
+    maxTx(y3, m3, "השלמת תשלום דיג'יי", 5500, 'other', 'wedding', 'large_expense'),
+    maxTx(y3, m3, 'צילום וידאו השלמה', 4000, 'other', 'wedding', 'large_expense'),
+    maxTx(y3, m3, 'נסיעות לחתונה', 800, 'car', 'wedding', 'large_expense'),
+  );
+  p3.ccUploads[0].transactions.push(
+    isracardTx(y3, m3, 'השלמת תשלום שמלת כלה', 6000, 'clothing', 'wedding', 'large_expense'),
+    isracardTx(y3, m3, 'איפור וספר', 1200, 'grooming', 'wedding', 'large_expense'),
+    isracardTx(y3, m3, 'כיבוד חתונה תוספות', 2000, 'other', 'wedding', 'large_expense'),
+  );
+
+  // --- ICELAND: period 0 (planning), period 1 (activities) ---
+
+  // Period 0 (Nov) planning
+  p0.ccUploads[2].transactions.push(
+    maxTx(y0, m0, 'טיסות לאיסלנד', 4200, 'vacation', 'iceland', 'large_expense'),
+    maxTx(y0, m0, 'השכרת רכב איסלנד', 1600, 'vacation', 'iceland', 'large_expense'),
+  );
+  p0.ccUploads[0].transactions.push(
+    isracardTx(y0, m0, 'מלון רייקיאוויק 5 לילות', 3800, 'vacation', 'iceland', 'large_expense'),
+  );
+
+  // Period 1 (Dec) activities
+  p1.ccUploads[2].transactions.push(
+    maxTx(y1, m1, 'Northern Lights tour', 580, 'entertainment', 'iceland', 'large_expense'),
+    maxTx(y1, m1, 'Blue Lagoon', 380, 'entertainment', 'iceland', 'large_expense'),
+    maxTx(y1, m1, 'מסעדה רייקיאוויק 2', 320, 'entertainment', 'iceland', 'large_expense'),
+    maxTx(y1, m1, 'whale watching', 490, 'entertainment', 'iceland', 'large_expense'),
+    maxTx(y1, m1, 'קניות מזכרות', 380, 'gifts', 'iceland', 'large_expense'),
+    maxTx(y1, m1, 'תחבורה מקומית', 220, 'car', 'iceland', 'large_expense'),
+  );
+  p1.ccUploads[0].transactions.push(
+    isracardTx(y1, m1, 'Golden Circle tour', 420, 'entertainment', 'iceland', 'large_expense'),
+    isracardTx(y1, m1, 'מסעדה רייקיאוויק 1', 280, 'entertainment', 'iceland', 'large_expense'),
+    isracardTx(y1, m1, 'סופרמרקט איסלנד', 450, 'groceries', 'iceland', 'large_expense'),
+    isracardTx(y1, m1, 'מסעדה רייקיאוויק 3', 260, 'entertainment', 'iceland', 'large_expense'),
+    isracardTx(y1, m1, 'כניסה למוזיאון', 160, 'entertainment', 'iceland', 'large_expense'),
+    isracardTx(y1, m1, 'שדה תעופה קניות', 340, 'gifts', 'iceland', 'large_expense'),
+  );
+
+  // --- PORTUGAL: period 1 (planning), period 2 (activities) ---
+
+  // Period 1 (Dec) planning
+  p1.ccUploads[2].transactions.push(
+    maxTx(y1, m1, 'טיסות לפורטוגל', 3600, 'vacation', 'portugal', 'large_expense'),
+    maxTx(y1, m1, 'מלון פורטו 3 לילות', 1900, 'vacation', 'portugal', 'large_expense'),
+  );
+  p1.ccUploads[0].transactions.push(
+    isracardTx(y1, m1, 'מלון ליסבון 4 לילות', 2800, 'vacation', 'portugal', 'large_expense'),
+    isracardTx(y1, m1, 'השכרת רכב פורטוגל', 1200, 'vacation', 'portugal', 'large_expense'),
+  );
+
+  // Period 2 (Jan) activities
+  p2.ccUploads[2].transactions.push(
+    maxTx(y2, m2, 'טיסות פנים פורטוגל', 280, 'vacation', 'portugal', 'large_expense'),
+    maxTx(y2, m2, 'Sintra day trip', 180, 'entertainment', 'portugal', 'large_expense'),
+    maxTx(y2, m2, 'wine tasting', 240, 'entertainment', 'portugal', 'large_expense'),
+    maxTx(y2, m2, 'מסעדה ליסבון 2', 260, 'entertainment', 'portugal', 'large_expense'),
+    maxTx(y2, m2, 'אטרקציה מקומית', 140, 'entertainment', 'portugal', 'large_expense'),
+    maxTx(y2, m2, 'מסעדה ליסבון 3', 310, 'entertainment', 'portugal', 'large_expense'),
+  );
+  p2.ccUploads[0].transactions.push(
+    isracardTx(y2, m2, 'מסעדה ליסבון 1', 320, 'entertainment', 'portugal', 'large_expense'),
+    isracardTx(y2, m2, 'מסעדה פורטו', 290, 'entertainment', 'portugal', 'large_expense'),
+    isracardTx(y2, m2, 'סופרמרקט פורטוגל', 380, 'groceries', 'portugal', 'large_expense'),
+    isracardTx(y2, m2, 'קניות ליסבון', 520, 'gifts', 'portugal', 'large_expense'),
+    isracardTx(y2, m2, 'שדה תעופה קניות', 290, 'gifts', 'portugal', 'large_expense'),
+  );
+
+  // --- STANDALONE SINGLE-PERIOD EVENTS ---
+
+  // Period 0 (Nov 2024)
+  p0.ccUploads[2].transactions.push(
+    maxTx(y0, m0, 'IKEA', 3800, 'home', 'ikea_upgrade', 'large_expense'),
+  );
+  p0.leumiTransactions.push(
+    bankTx(y0, m0, 'מענק שנתי', true, 8500, 'annual_bonus_itay', 'large_income'),
+  );
+
+  // Period 1 (Dec 2024)
+  p1.ccUploads[0].transactions.push(
+    isracardTx(y1, m1, 'iDigital', 4200, 'electronics', 'new_laptop', 'large_expense'),
+  );
+  p1.hapoalimTransactions.push(
+    bankTx(y1, m1, 'החזר מס הכנסה', true, 5600, 'tax_refund', 'large_income'),
+  );
+
+  // Period 2 (Jan 2025)
+  p2.ccUploads[0].transactions.push(
+    isracardTx(y2, m2, 'מרפאת שיניים פרטית', 2500, 'medical', 'dental', 'large_expense'),
+    isracardTx(y2, m2, 'מרפאת שיניים פרטית', 1800, 'medical', 'dental', 'large_expense'),
+  );
+  p2.leumiTransactions.push(
+    bankTx(y2, m2, 'תשלום פרילנס', true, 7200, 'freelance', 'large_income'),
+  );
+
+  // Period 3 (Feb 2025)
+  p3.leumiTransactions.push(
+    bankTx(y3, m3, 'ביטוח חיים שנתי', false, 3200, 'life_insurance', 'large_expense'),
+  );
+
+  // Period 4 (Mar 2025)
+  p4.ccUploads[2].transactions.push(
+    maxTx(y4, m4, 'iDigital', 4800, 'electronics', 'new_iphone', 'large_expense'),
+  );
+  p4.hapoalimTransactions.push(
+    bankTx(y4, m4, 'מענק רבעוני', true, 6500, 'quarterly_bonus_dana', 'large_income'),
+  );
+}
+
 function generateDemoData() {
   const maleName  = pick(MALE_NAMES);
   const femaleName = pick(FEMALE_NAMES);
@@ -457,6 +671,8 @@ function generateDemoData() {
     });
   }
 
+  addEventTransactions(periods, maleName, femaleName);
+
   // Build merchant → category map for merchant_categories table.
   // Start with bank descriptions, then layer CC merchants on top.
   const merchantCategories = { ...BANK_CATEGORIES };
@@ -466,7 +682,7 @@ function generateDemoData() {
     }
   }
 
-  return { maleName, femaleName, periods, merchantCategories };
+  return { maleName, femaleName, periods, merchantCategories, events: DEMO_EVENTS };
 }
 
 module.exports = { generateDemoData };
