@@ -103,6 +103,13 @@ function initSchema(db) {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      description TEXT DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE INDEX IF NOT EXISTS idx_transactions_month_id ON transactions(month_id);
     CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
     CREATE INDEX IF NOT EXISTS idx_months_year_month ON months(year, month);
@@ -128,6 +135,8 @@ function initSchema(db) {
   try { db.exec(`ALTER TABLE cc_uploads ADD COLUMN period TEXT DEFAULT ''`); } catch (_) {}
   try { db.exec(`ALTER TABLE transactions ADD COLUMN period_id INTEGER REFERENCES months(id)`); } catch (_) {}
   try { db.exec(`ALTER TABLE credit_card_transactions ADD COLUMN period_id INTEGER REFERENCES months(id)`); } catch (_) {}
+  try { db.exec(`ALTER TABLE transactions ADD COLUMN event_id INTEGER REFERENCES events(id)`); } catch (_) {}
+  try { db.exec(`ALTER TABLE credit_card_transactions ADD COLUMN event_id INTEGER REFERENCES events(id)`); } catch (_) {}
   // Back-fill period for existing uploads that have transactions but no period set
   try {
     db.exec(`

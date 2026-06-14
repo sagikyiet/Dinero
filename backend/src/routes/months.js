@@ -124,15 +124,19 @@ router.get('/:id/dashboard', (req, res) => {
   // Tagged CC transactions for the same calendar month, normalized to match bank tx shape
   const EXPENSE_TAGS = new Set(['large_expense', 'routine_expense', 'savings']);
   const ccTagged = db.prepare(`
-    SELECT * FROM credit_card_transactions
-    WHERE month_key = ? AND tag IS NOT NULL AND tag != ''
-    ORDER BY date DESC
+    SELECT cct.*, e.name AS event_name
+    FROM credit_card_transactions cct
+    LEFT JOIN events e ON e.id = cct.event_id
+    WHERE cct.month_key = ? AND cct.tag IS NOT NULL AND cct.tag != ''
+    ORDER BY cct.date DESC
   `).all(monthKey).map(tx => ({
     id: `cc_${tx.id}`,
     date: tx.date,
     description: tx.merchant || '',
     tag: tx.tag,
     tag_note: tx.tag_note || '',
+    event_id: tx.event_id ?? null,
+    event_name: tx.event_name ?? null,
     debit:  EXPENSE_TAGS.has(tx.tag) ? tx.amount : null,
     credit: !EXPENSE_TAGS.has(tx.tag) ? tx.amount : null,
   }));

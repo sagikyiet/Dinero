@@ -9,6 +9,7 @@ import SpecialTransactions from './components/SpecialTransactions';
 import MonthSelector from './components/MonthSelector';
 import PeulotView from './components/PeulotView';
 import DemoBanner from './components/DemoBanner';
+import EventsPage from './components/EventsPage';
 
 const MONTH_NAMES = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
 
@@ -181,6 +182,12 @@ export default function App() {
             פעולות
           </button>
           <button
+            className={`nav-btn${view === 'events' ? ' active' : ''}`}
+            onClick={() => handleViewChange('events')}
+          >
+            אירועים
+          </button>
+          <button
             className={`nav-btn${view === 'history' ? ' active' : ''}`}
             onClick={() => handleViewChange('history')}
           >
@@ -318,6 +325,12 @@ export default function App() {
               )}
             </main>
           </>
+        )}
+
+        {view === 'events' && (
+          <main className="main full">
+            <EventsPage />
+          </main>
         )}
 
         {view === 'history' && (

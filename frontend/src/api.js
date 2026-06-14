@@ -39,11 +39,31 @@ export const setCardOwner = (credit_card_name, bank, owner) =>
     body: JSON.stringify({ credit_card_name, bank, owner }),
   });
 
-export const tagTransaction = (txId, tag, permanent = false, tag_note = '') =>
+export const tagTransaction = (txId, tag, permanent = false, tag_note = '', event_id = undefined) =>
   request(`/transactions/${txId}/tag`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tag, permanent, tag_note }),
+    body: JSON.stringify({ tag, permanent, tag_note, ...(event_id !== undefined && { event_id }) }),
+  });
+
+export const fetchEvents = () => request('/events');
+export const fetchEventsSummary = () => request('/events/summary');
+export const fetchEventTransactions = (id) => request(`/events/${id}/transactions`);
+
+export const createEvent = (name, description = '') =>
+  request('/events', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, description }),
+  });
+
+export const deleteEvent = (id) => request(`/events/${id}`, { method: 'DELETE' });
+
+export const updateEvent = (id, name) =>
+  request(`/events/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
   });
 
 
@@ -102,11 +122,11 @@ export async function replaceCCFile(id, file) {
 
 export const getCCFileDownloadUrl = (id) => `${BASE}/credit-cards/files/${id}/download`;
 
-export const tagCCTransaction = (txId, tag, permanent = false, tag_note = '') =>
+export const tagCCTransaction = (txId, tag, permanent = false, tag_note = '', event_id = undefined) =>
   request(`/credit-cards/transactions/${txId}/tag`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tag, permanent, tag_note }),
+    body: JSON.stringify({ tag, permanent, tag_note, ...(event_id !== undefined && { event_id }) }),
   });
 
 export const fetchCCFileTransactions = (uploadId) =>

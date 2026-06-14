@@ -246,14 +246,17 @@ router.delete('/files/:id', (req, res) => {
 router.patch('/transactions/:id/tag', (req, res) => {
   const db = getDb();
   const txId = parseInt(req.params.id);
-  const { tag, tag_note, permanent } = req.body;
+  const { tag, tag_note, permanent, event_id } = req.body;
 
   const tx = db.prepare('SELECT * FROM credit_card_transactions WHERE id = ?').get(txId);
   if (!tx) return res.status(404).json({ error: 'עסקה לא נמצאה' });
 
-  db.prepare('UPDATE credit_card_transactions SET tag = ?, tag_note = ? WHERE id = ?').run(
+  const resolvedEventId = event_id !== undefined ? event_id : (tx.event_id ?? null);
+  console.log('[PATCH tag cc] txId=%d tag=%s event_id_received=%s resolved=%s', txId, tag, event_id, resolvedEventId);
+  db.prepare('UPDATE credit_card_transactions SET tag = ?, tag_note = ?, event_id = ? WHERE id = ?').run(
     tag ?? null,
     tag ? (tag_note ?? '') : '',
+    resolvedEventId,
     txId
   );
 
