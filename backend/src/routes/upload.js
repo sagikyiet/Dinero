@@ -38,13 +38,14 @@ router.post('/', upload.fields([
 
     if (existing) {
       monthId = existing.id;
-      // Delete old saved files before replacing
+      // Only delete the old file/transactions for a bank if a new file for that bank is in this request
       const old = db.prepare('SELECT leumi_filepath, hapoalim_filepath FROM months WHERE id = ?').get(monthId);
       if (old) {
-        deleteUploadedFile(old.leumi_filepath);
-        deleteUploadedFile(old.hapoalim_filepath);
+        if (req.files?.leumi) deleteUploadedFile(old.leumi_filepath);
+        if (req.files?.hapoalim) deleteUploadedFile(old.hapoalim_filepath);
       }
-      db.prepare('DELETE FROM transactions WHERE month_id = ?').run(monthId);
+      if (req.files?.leumi) db.prepare('DELETE FROM transactions WHERE month_id = ? AND bank = ?').run(monthId, 'leumi');
+      if (req.files?.hapoalim) db.prepare('DELETE FROM transactions WHERE month_id = ? AND bank = ?').run(monthId, 'hapoalim');
     } else {
       const result = db.prepare('INSERT INTO months (year, month) VALUES (?, ?)').run(yearNum, monthNum);
       monthId = result.lastInsertRowid;
@@ -107,19 +108,28 @@ router.post('/', upload.fields([
     const rules = db.prepare('SELECT * FROM tag_rules').all();
     for (const rule of rules) {
       db.prepare(`
-        UPDATE transactions SET tag = ?
+        UPDATE transactions SET tag = ?, event_id = ?
         WHERE month_id = ? AND description = ?
         AND ABS(CAST(strftime('%d', date) AS INTEGER) - ?) <= 2
-      `).run(rule.tag, monthId, rule.description, rule.day_of_month);
+        AND (? IS NULL OR ABS(COALESCE(debit, credit) - ?) <= ABS(?) * 0.1)
+      `).run(rule.tag, rule.event_id, monthId, rule.description, rule.day_of_month,
+             rule.amount, rule.amount, rule.amount);
     }
 
-    db.prepare('UPDATE months SET leumi_filename = ?, hapoalim_filename = ?, leumi_filepath = ?, hapoalim_filepath = ? WHERE id = ?').run(
-      req.files?.leumi?.[0]?.originalname || '',
-      req.files?.hapoalim?.[0]?.originalname || '',
-      leumiSavedName,
-      hapoalimSavedName,
-      monthId
-    );
+    // Only update columns for banks actually present in this request
+    const updateParts = [];
+    const updateArgs = [];
+    if (req.files?.leumi) {
+      updateParts.push('leumi_filename = ?', 'leumi_filepath = ?');
+      updateArgs.push(req.files.leumi[0]?.originalname || '', leumiSavedName);
+    }
+    if (req.files?.hapoalim) {
+      updateParts.push('hapoalim_filename = ?', 'hapoalim_filepath = ?');
+      updateArgs.push(req.files.hapoalim[0]?.originalname || '', hapoalimSavedName);
+    }
+    if (updateParts.length > 0) {
+      db.prepare(`UPDATE months SET ${updateParts.join(', ')} WHERE id = ?`).run(...updateArgs, monthId);
+    }
 
     res.json({
       success: true,

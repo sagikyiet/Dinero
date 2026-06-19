@@ -28,6 +28,13 @@ router.get('/', (req, res) => {
     FROM months m
     LEFT JOIN transactions t ON t.month_id = m.id
     GROUP BY m.id
+    HAVING
+      COALESCE(m.leumi_filepath, '') != '' OR
+      COALESCE(m.hapoalim_filepath, '') != '' OR
+      EXISTS (
+        SELECT 1 FROM cc_uploads
+        WHERE cc_uploads.period = printf('%d-%02d', m.year, m.month)
+      )
     ORDER BY m.year DESC, m.month DESC
   `).all();
   res.json(months);
@@ -242,10 +249,12 @@ router.post('/:id/files/:bank', upload.single('file'), (req, res) => {
     const rules = db.prepare('SELECT * FROM tag_rules').all();
     for (const rule of rules) {
       db.prepare(`
-        UPDATE transactions SET tag = ?
+        UPDATE transactions SET tag = ?, event_id = ?
         WHERE month_id = ? AND bank = ? AND description = ?
         AND ABS(CAST(strftime('%d', date) AS INTEGER) - ?) <= 2
-      `).run(rule.tag, monthId, bank, rule.description, rule.day_of_month);
+        AND (? IS NULL OR ABS(COALESCE(debit, credit) - ?) <= ABS(?) * 0.1)
+      `).run(rule.tag, rule.event_id, monthId, bank, rule.description, rule.day_of_month,
+             rule.amount, rule.amount, rule.amount);
     }
 
     const savedName = saveUploadedFile(monthId, bank, req.file);

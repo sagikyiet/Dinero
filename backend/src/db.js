@@ -137,6 +137,9 @@ function initSchema(db) {
   try { db.exec(`ALTER TABLE credit_card_transactions ADD COLUMN period_id INTEGER REFERENCES months(id)`); } catch (_) {}
   try { db.exec(`ALTER TABLE transactions ADD COLUMN event_id INTEGER REFERENCES events(id)`); } catch (_) {}
   try { db.exec(`ALTER TABLE credit_card_transactions ADD COLUMN event_id INTEGER REFERENCES events(id)`); } catch (_) {}
+  try { db.exec(`ALTER TABLE cc_uploads ADD COLUMN file_hash TEXT`); } catch (_) {}
+  try { db.exec(`ALTER TABLE tag_rules ADD COLUMN amount REAL`); } catch (_) {}
+  try { db.exec(`ALTER TABLE tag_rules ADD COLUMN event_id INTEGER REFERENCES events(id)`); } catch (_) {}
   // Back-fill period for existing uploads that have transactions but no period set
   try {
     db.exec(`

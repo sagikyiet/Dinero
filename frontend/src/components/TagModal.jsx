@@ -9,18 +9,27 @@ const TAG_ROWS = [
 
 const EVENT_REQUIRED_TAGS = new Set(['large_income', 'large_expense']);
 
-export default function TagModal({ tx, onClose, onSaved, tagFn, demoNames = {} }) {
+export default function TagModal({ tx, txs, onClose, onSaved, tagFn, bulkTagFn, demoNames = {} }) {
   const TAGS = getTagLabels(demoNames);
+  const isBulk = Array.isArray(txs);
 
-  // Fix 2: tags disallowed based on transaction direction
-  const disabledTags = tx.debit
-    ? new Set(['large_income', 'routine_income'])
-    : tx.credit
-      ? new Set(['large_expense', 'routine_expense'])
-      : new Set();
+  // Fix 2: tags disallowed based on transaction direction. In bulk mode, a tag
+  // is disabled if it would be invalid for ANY of the selected transactions.
+  const disabledTags = isBulk
+    ? new Set([
+        ...(txs.some(t => t.debit > 0) ? ['large_income', 'routine_income'] : []),
+        ...(txs.some(t => t.credit > 0) ? ['large_expense', 'routine_expense'] : []),
+      ])
+    : tx.debit
+      ? new Set(['large_income', 'routine_income'])
+      : tx.credit
+        ? new Set(['large_expense', 'routine_expense'])
+        : new Set();
 
-  // Auto-deselect if the existing tag is now invalid for this transaction's direction
+  // Auto-deselect if the existing tag is now invalid for this transaction's direction.
+  // Bulk mode always starts unselected since the selection can mix existing tags.
   const [selected, setSelected] = useState(() => {
+    if (isBulk) return null;
     const initial = tx.tag ?? null;
     return (initial && disabledTags.has(initial)) ? null : initial;
   });
@@ -40,7 +49,7 @@ export default function TagModal({ tx, onClose, onSaved, tagFn, demoNames = {} }
     fetchEvents()
       .then(list => {
         setEvents(list);
-        if (tx.event_id) {
+        if (!isBulk && tx.event_id) {
           const found = list.find(e => e.id === tx.event_id);
           if (found) { setSelectedEvent(found); setEventQuery(found.name); }
         }
@@ -99,8 +108,13 @@ export default function TagModal({ tx, onClose, onSaved, tagFn, demoNames = {} }
         const created = await createEvent(eventQuery.trim());
         eventId = created.id;
       }
-      console.log('[TagModal] saving', { txId: tx.id, tag: selected, permanent, event_id: eventId });
-      await applyTag(tx.id, selected, permanent, tx.tag_note ?? '', eventId);
+      if (isBulk) {
+        console.log('[TagModal] bulk saving', { txIds: txs.map(t => t.id), tag: selected, event_id: eventId });
+        await bulkTagFn(txs.map(t => t.id), selected, eventId);
+      } else {
+        console.log('[TagModal] saving', { txId: tx.id, tag: selected, permanent, event_id: eventId });
+        await applyTag(tx.id, selected, permanent, tx.tag_note ?? '', eventId);
+      }
       onSaved();
       onClose();
     } catch (e) {
@@ -114,12 +128,12 @@ export default function TagModal({ tx, onClose, onSaved, tagFn, demoNames = {} }
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal" style={{ maxWidth: 440 }}>
         <div className="modal-header">
-          <h3>תיוג פעולה</h3>
+          <h3>{isBulk ? 'תיוג מספר פעולות' : 'תיוג פעולה'}</h3>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
 
         <div className="tag-modal-body">
-          <p className="tag-modal-desc">{tx.description}</p>
+          <p className="tag-modal-desc">{isBulk ? `תיוג ${txs.length} פעולות נבחרות` : tx.description}</p>
 
           <div className="tag-options">
             {TAG_ROWS.map((row, rowIdx) => (
@@ -196,14 +210,16 @@ export default function TagModal({ tx, onClose, onSaved, tagFn, demoNames = {} }
             </div>
           )}
 
-          <label className="tag-permanent-label">
-            <input
-              type="checkbox"
-              checked={permanent}
-              onChange={e => setPermanent(e.target.checked)}
-            />
-            <span>זכור תיוג זה לפעולות דומות (אותו תיאור, ±2 ימים מדי חודש)</span>
-          </label>
+          {!isBulk && (
+            <label className="tag-permanent-label">
+              <input
+                type="checkbox"
+                checked={permanent}
+                onChange={e => setPermanent(e.target.checked)}
+              />
+              <span>זכור תיוג זה לפעולות דומות (אותו תיאור, ±2 ימים מדי חודש)</span>
+            </label>
+          )}
 
           <div className="form-actions" style={{ marginTop: '1.25rem' }}>
             <button className="btn-secondary" onClick={onClose}>ביטול</button>

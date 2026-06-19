@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { fetchCCTransactions, tagCCTransaction, categorizeMerchant, overrideCategory } from '../api';
+import { fetchCCTransactions, tagCCTransaction, bulkTagCCTransactions, categorizeMerchant, overrideCategory } from '../api';
 import { CATEGORIES, CATEGORY_LABELS } from '../categories';
 import { getTagLabels } from '../tags';
 import TagModal from './TagModal';
@@ -50,6 +50,8 @@ export default function CreditCardTransactionsView({ initialMonthKey, demoNames 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [tagModal, setTagModal] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkTagModal, setBulkTagModal] = useState(false);
 
   // Period filter (syncs with selected sidebar month)
   const [monthKeyFilter, setMonthKeyFilter] = useState(initialMonthKey || '');
@@ -157,6 +159,21 @@ export default function CreditCardTransactionsView({ initialMonthKey, demoNames 
   const paginated = sorted.slice(0, page * PAGE_SIZE);
   const hasMore = paginated.length < sorted.length;
 
+  function toggleSelect(id) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds(prev => {
+      const allSelected = paginated.length > 0 && paginated.every(tx => prev.has(tx.id));
+      return allSelected ? new Set() : new Set(paginated.map(tx => tx.id));
+    });
+  }
+
   const paginatedMerchants = [...new Set(
     paginated.map(tx => tx.merchant).filter(Boolean)
   )].sort().join('\x00');
@@ -196,6 +213,14 @@ export default function CreditCardTransactionsView({ initialMonthKey, demoNames 
           <h3 className="card-title">עסקאות כרטיסי אשראי</h3>
           <span className="tx-count-label">{filtered.length} עסקאות</span>
         </div>
+
+        {selectedIds.size > 0 && (
+          <div className="bulk-actions-bar">
+            <span className="bulk-actions-count">{selectedIds.size} נבחרו</span>
+            <button className="btn-primary" onClick={() => setBulkTagModal(true)}>תייג נבחרים</button>
+            <button className="btn-ghost" onClick={() => setSelectedIds(new Set())}>נקה בחירה</button>
+          </div>
+        )}
 
         <div className="filters">
           <select value={monthKeyFilter} onChange={e => { setMonthKeyFilter(e.target.value); setPage(1); }}>
@@ -257,6 +282,13 @@ export default function CreditCardTransactionsView({ initialMonthKey, demoNames 
           <table className="tx-table">
             <thead>
               <tr>
+                <th className="select-col">
+                  <input
+                    type="checkbox"
+                    checked={paginated.length > 0 && paginated.every(tx => selectedIds.has(tx.id))}
+                    onChange={toggleSelectAll}
+                  />
+                </th>
                 <th className="sortable" onClick={() => handleSort('date')}>תאריך <SortArrow col="date" /></th>
                 <th className="sortable" onClick={() => handleSort('merchant')}>שם עסק <SortArrow col="merchant" /></th>
                 <th className="num-col sortable" onClick={() => handleSort('amount')}>סכום <SortArrow col="amount" /></th>
@@ -272,6 +304,13 @@ export default function CreditCardTransactionsView({ initialMonthKey, demoNames 
                 const tagDef = tx.tag ? TAGS[tx.tag] : null;
                 return (
                   <tr key={tx.id} className="tx-row">
+                    <td className="select-col">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(tx.id)}
+                        onChange={() => toggleSelect(tx.id)}
+                      />
+                    </td>
                     <td className="date-cell">{tx.date?.slice(0, 10)}</td>
                     <td className="desc-cell">
                       <span className="desc-text">{tx.merchant}</span>
@@ -354,6 +393,7 @@ export default function CreditCardTransactionsView({ initialMonthKey, demoNames 
             </tbody>
             <tfoot>
               <tr className="totals-row">
+                <td />
                 <td colSpan={2}>סה"כ ({filtered.length} עסקאות)</td>
                 <td className="num-col debit-col">{fmt(total)}</td>
                 <td colSpan={5} />
@@ -385,6 +425,18 @@ export default function CreditCardTransactionsView({ initialMonthKey, demoNames 
           onClose={() => setTagModal(null)}
           onSaved={loadData}
           tagFn={tagCCTransaction}
+          demoNames={demoNames}
+        />
+      )}
+
+      {bulkTagModal && (
+        <TagModal
+          txs={data.transactions
+            .filter(tx => selectedIds.has(tx.id))
+            .map(tx => ({ ...tx, debit: tx.amount }))}
+          onClose={() => setBulkTagModal(false)}
+          onSaved={() => { loadData(); setSelectedIds(new Set()); }}
+          bulkTagFn={bulkTagCCTransactions}
           demoNames={demoNames}
         />
       )}

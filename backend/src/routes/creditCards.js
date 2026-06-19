@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
@@ -30,7 +31,17 @@ router.post('/upload', upload.single('file'), (req, res) => {
     const owner    = req.body.owner || 'joint';
     const period   = (req.body.period || '').trim();
 
+    const fileHash = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
+
     const db = getDb();
+
+    // Block exact duplicate files regardless of card/period metadata
+    const dup = db.prepare('SELECT id, filename, period FROM cc_uploads WHERE file_hash = ?').get(fileHash);
+    if (dup) {
+      return res.status(409).json({
+        error: `קובץ זה כבר הועלה בעבר (${dup.filename}${dup.period ? ` לתקופה ${dup.period}` : ''}). אם ברצונך להעלות מחדש, מחק תחילה את ההעלאה הקיימת.`,
+      });
+    }
 
     // Resolve the billing period string (YYYY-MM) to months.id so transactions
     // are grouped by upload period rather than individual transaction dates.
@@ -50,10 +61,14 @@ router.post('/upload', upload.single('file'), (req, res) => {
     fs.writeFileSync(savedPath, req.file.buffer);
 
     const uploadResult = db.prepare(`
-      INSERT INTO cc_uploads (filename, filepath, company, transaction_count, card_name, owner, period)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(req.file.originalname, savedName, parser.company, transactions.length, cardName, owner, period);
+      INSERT INTO cc_uploads (filename, filepath, company, transaction_count, card_name, owner, period, file_hash)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(req.file.originalname, savedName, parser.company, transactions.length, cardName, owner, period, fileHash);
     const uploadId = uploadResult.lastInsertRowid;
+
+    // Use the upload period as month_key so boundary-dated transactions are
+    // filed under the billing period the user selected, not their transaction date.
+    const uploadMonthKey = period || null;
 
     const insertTx = db.prepare(`
       INSERT INTO credit_card_transactions (
@@ -69,7 +84,7 @@ router.post('/upload', upload.single('file'), (req, res) => {
         insertTx.run(
           uploadId, periodId, tx.date, tx.merchant, tx.amount, tx.currency,
           tx.original_amount, tx.original_currency, tx.category,
-          tx.card_last4, tx.source_company, tx.notes, tx.month_key,
+          tx.card_last4, tx.source_company, tx.notes, uploadMonthKey ?? tx.month_key,
           cardName, owner
         );
       }
@@ -80,14 +95,16 @@ router.post('/upload', upload.single('file'), (req, res) => {
       throw e;
     }
 
-    // Auto-apply saved tag rules (matched on merchant name ± 2 days)
+    // Auto-apply saved tag rules (matched on merchant name ± 2 days ± 10% amount)
     const rules = db.prepare('SELECT * FROM tag_rules').all();
     for (const rule of rules) {
       db.prepare(`
-        UPDATE credit_card_transactions SET tag = ?
+        UPDATE credit_card_transactions SET tag = ?, event_id = ?
         WHERE upload_id = ? AND merchant = ?
         AND ABS(CAST(strftime('%d', date) AS INTEGER) - ?) <= 2
-      `).run(rule.tag, uploadId, rule.description, rule.day_of_month);
+        AND (? IS NULL OR ABS(amount - ?) <= ABS(?) * 0.1)
+      `).run(rule.tag, rule.event_id, uploadId, rule.description, rule.day_of_month,
+             rule.amount, rule.amount, rule.amount);
     }
 
     res.json({
@@ -141,8 +158,10 @@ router.patch('/files/:id/meta', (req, res) => {
     }
   }
 
+  const metaMonthKey = period || null;
+
   db.prepare('UPDATE cc_uploads SET card_name = ?, owner = ?, period = ? WHERE id = ?').run(cardName, owner, period, uploadId);
-  db.prepare('UPDATE credit_card_transactions SET card_name = ?, owner = ?, period_id = ? WHERE upload_id = ?').run(cardName, owner, metaPeriodId, uploadId);
+  db.prepare('UPDATE credit_card_transactions SET card_name = ?, owner = ?, period_id = ?, month_key = ? WHERE upload_id = ?').run(cardName, owner, metaPeriodId, metaMonthKey, uploadId);
 
   res.json({ success: true });
 });
@@ -167,6 +186,8 @@ router.post('/files/:id/replace', upload.single('file'), (req, res) => {
     const transactions = parser.parse(req.file.buffer);
     if (transactions.length === 0) return res.status(400).json({ error: 'לא נמצאו עסקאות בקובץ' });
 
+    const replaceHash = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
+
     const ext = path.extname(req.file.originalname) || '.xlsx';
     const savedName = `cc_${parser.company}_${Date.now()}${ext}`;
     const savedPath = path.join(UPLOADS_DIR, savedName);
@@ -176,8 +197,8 @@ router.post('/files/:id/replace', upload.single('file'), (req, res) => {
     deleteUploadedFile(existing.filepath);
 
     db.prepare(
-      'UPDATE cc_uploads SET filename = ?, filepath = ?, company = ?, transaction_count = ? WHERE id = ?'
-    ).run(req.file.originalname, savedName, parser.company, transactions.length, uploadId);
+      'UPDATE cc_uploads SET filename = ?, filepath = ?, company = ?, transaction_count = ?, file_hash = ? WHERE id = ?'
+    ).run(req.file.originalname, savedName, parser.company, transactions.length, replaceHash, uploadId);
 
     db.prepare('DELETE FROM credit_card_transactions WHERE upload_id = ?').run(uploadId);
 
@@ -199,13 +220,15 @@ router.post('/files/:id/replace', upload.single('file'), (req, res) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
+    const replaceMonthKey = existing.period || null;
+
     db.exec('BEGIN TRANSACTION');
     try {
       for (const tx of transactions) {
         insertTx.run(
           uploadId, replacePeriodId, tx.date, tx.merchant, tx.amount, tx.currency,
           tx.original_amount, tx.original_currency, tx.category,
-          tx.card_last4, tx.source_company, tx.notes, tx.month_key,
+          tx.card_last4, tx.source_company, tx.notes, replaceMonthKey ?? tx.month_key,
           existing.card_name, existing.owner
         );
       }
@@ -219,10 +242,12 @@ router.post('/files/:id/replace', upload.single('file'), (req, res) => {
     const rules = db.prepare('SELECT * FROM tag_rules').all();
     for (const rule of rules) {
       db.prepare(`
-        UPDATE credit_card_transactions SET tag = ?
+        UPDATE credit_card_transactions SET tag = ?, event_id = ?
         WHERE upload_id = ? AND merchant = ?
         AND ABS(CAST(strftime('%d', date) AS INTEGER) - ?) <= 2
-      `).run(rule.tag, uploadId, rule.description, rule.day_of_month);
+        AND (? IS NULL OR ABS(amount - ?) <= ABS(?) * 0.1)
+      `).run(rule.tag, rule.event_id, uploadId, rule.description, rule.day_of_month,
+             rule.amount, rule.amount, rule.amount);
     }
 
     res.json({ success: true, transactionCount: transactions.length });
@@ -262,26 +287,60 @@ router.patch('/transactions/:id/tag', (req, res) => {
 
   if (permanent && tag && tx.merchant) {
     const dayOfMonth = parseInt(tx.date.slice(8, 10), 10);
+    const ruleAmount = tx.amount ?? null;
     db.prepare(`
-      INSERT INTO tag_rules (description, day_of_month, tag)
-      VALUES (?, ?, ?)
-      ON CONFLICT(description) DO UPDATE SET day_of_month = excluded.day_of_month, tag = excluded.tag
-    `).run(tx.merchant, dayOfMonth, tag);
+      INSERT INTO tag_rules (description, day_of_month, tag, amount, event_id)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(description) DO UPDATE SET
+        day_of_month = excluded.day_of_month,
+        tag = excluded.tag,
+        amount = excluded.amount,
+        event_id = excluded.event_id
+    `).run(tx.merchant, dayOfMonth, tag, ruleAmount, resolvedEventId);
 
     db.prepare(`
-      UPDATE credit_card_transactions SET tag = ?
+      UPDATE credit_card_transactions SET tag = ?, event_id = ?
       WHERE merchant = ?
       AND ABS(CAST(strftime('%d', date) AS INTEGER) - ?) <= 2
-    `).run(tag, tx.merchant, dayOfMonth);
+      AND (? IS NULL OR ABS(amount - ?) <= ABS(?) * 0.1)
+    `).run(tag, resolvedEventId, tx.merchant, dayOfMonth, ruleAmount, ruleAmount, ruleAmount);
 
     db.prepare(`
-      UPDATE transactions SET tag = ?
+      UPDATE transactions SET tag = ?, event_id = ?
       WHERE description = ?
       AND ABS(CAST(strftime('%d', date) AS INTEGER) - ?) <= 2
-    `).run(tag, tx.merchant, dayOfMonth);
+      AND (? IS NULL OR ABS(COALESCE(debit, credit) - ?) <= ABS(?) * 0.1)
+    `).run(tag, resolvedEventId, tx.merchant, dayOfMonth, ruleAmount, ruleAmount, ruleAmount);
   }
 
   res.json({ success: true });
+});
+
+// Apply the same tag + event to multiple CC transactions at once. Unlike the
+// single-tag route, this never creates/updates tag_rules or cascades to
+// other matching transactions — only the given ids are touched.
+router.patch('/transactions/bulk-tag', (req, res) => {
+  const db = getDb();
+  const { ids, tag, event_id } = req.body; // tag may be null to clear
+
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'נדרשת רשימת עסקאות לתיוג' });
+  }
+  const txIds = ids.map(id => parseInt(id)).filter(Number.isInteger);
+  if (txIds.length === 0) {
+    return res.status(400).json({ error: 'רשימת עסקאות לא תקינה' });
+  }
+
+  const resolvedEventId = event_id ?? null;
+  const placeholders = txIds.map(() => '?').join(',');
+
+  const result = tag
+    ? db.prepare(`UPDATE credit_card_transactions SET tag = ?, event_id = ? WHERE id IN (${placeholders})`)
+        .run(tag, resolvedEventId, ...txIds)
+    : db.prepare(`UPDATE credit_card_transactions SET tag = NULL, tag_note = '', event_id = ? WHERE id IN (${placeholders})`)
+        .run(resolvedEventId, ...txIds);
+
+  res.json({ success: true, updated: result.changes });
 });
 
 // Get CC transactions with optional filters

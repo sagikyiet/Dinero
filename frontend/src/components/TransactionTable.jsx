@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { getTagLabels } from '../tags';
 import TagModal from './TagModal';
-import { categorizeMerchant, overrideCategory } from '../api';
+import { categorizeMerchant, overrideCategory, bulkTagTransactions } from '../api';
 import { CATEGORIES, CATEGORY_LABELS } from '../categories';
 
 const fmt = (n) =>
@@ -28,6 +28,8 @@ export default function TransactionTable({ transactions, onUpdate, demoNames = {
   const [fromDateText, setFromDateText] = useState('');
   const [toDateText, setToDateText] = useState('');
   const [tagModal, setTagModal] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkTagModal, setBulkTagModal] = useState(false);
   const [sortCol, setSortCol] = useState(null);   // null = default (date desc)
   const [sortDir, setSortDir] = useState('asc');
   const [page, setPage] = useState(1);
@@ -99,6 +101,21 @@ export default function TransactionTable({ transactions, onUpdate, demoNames = {
   const paginated = filtered.slice(0, page * PAGE_SIZE);
   const hasMore = paginated.length < filtered.length;
 
+  function toggleSelect(id) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds(prev => {
+      const allSelected = paginated.length > 0 && paginated.every(tx => prev.has(tx.id));
+      return allSelected ? new Set() : new Set(paginated.map(tx => tx.id));
+    });
+  }
+
   // Stable string key: sorted unique descriptions — changes only when the visible set changes,
   // not when sort order changes. Used as the useEffect dependency.
   const paginatedDescriptions = [...new Set(
@@ -140,6 +157,14 @@ export default function TransactionTable({ transactions, onUpdate, demoNames = {
         <h3 className="card-title">פעולות עו"ש</h3>
         <span className="tx-count-label">{filtered.length} פעולות</span>
       </div>
+
+      {selectedIds.size > 0 && (
+        <div className="bulk-actions-bar">
+          <span className="bulk-actions-count">{selectedIds.size} נבחרו</span>
+          <button className="btn-primary" onClick={() => setBulkTagModal(true)}>תייג נבחרים</button>
+          <button className="btn-ghost" onClick={() => setSelectedIds(new Set())}>נקה בחירה</button>
+        </div>
+      )}
 
       <div className="filters">
         <input
@@ -185,6 +210,13 @@ export default function TransactionTable({ transactions, onUpdate, demoNames = {
         <table className="tx-table">
           <thead>
             <tr>
+              <th className="select-col">
+                <input
+                  type="checkbox"
+                  checked={paginated.length > 0 && paginated.every(tx => selectedIds.has(tx.id))}
+                  onChange={toggleSelectAll}
+                />
+              </th>
               <th className="sortable" onClick={() => handleSort('date')}>תאריך <SortArrow col="date" /></th>
               <th className="sortable" onClick={() => handleSort('description')}>תיאור <SortArrow col="description" /></th>
               <th>קטגוריה</th>
@@ -199,6 +231,13 @@ export default function TransactionTable({ transactions, onUpdate, demoNames = {
               const tagDef = tx.tag ? TAGS[tx.tag] : null;
               return (
                 <tr key={tx.id} className={`tx-row${tx.is_credit_card ? ' credit-card' : ''}`}>
+                  <td className="select-col">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(tx.id)}
+                      onChange={() => toggleSelect(tx.id)}
+                    />
+                  </td>
                   <td className="date-cell">{tx.date?.slice(0, 10)}</td>
                   <td className="desc-cell">
                     <span className="desc-text">{tx.description}</span>
@@ -277,6 +316,7 @@ export default function TransactionTable({ transactions, onUpdate, demoNames = {
           </tbody>
           <tfoot>
             <tr className="totals-row">
+              <td />
               <td colSpan={4}>סה"כ ({filtered.length} פעולות)</td>
               <td className="num-col debit-col">{fmt(totals.debit)}</td>
               <td className="num-col credit-col">{fmt(totals.credit)}</td>
@@ -299,6 +339,16 @@ export default function TransactionTable({ transactions, onUpdate, demoNames = {
           tx={tagModal}
           onClose={() => setTagModal(null)}
           onSaved={onUpdate}
+          demoNames={demoNames}
+        />
+      )}
+
+      {bulkTagModal && (
+        <TagModal
+          txs={transactions.filter(tx => selectedIds.has(tx.id))}
+          onClose={() => setBulkTagModal(false)}
+          onSaved={() => { onUpdate(); setSelectedIds(new Set()); }}
+          bulkTagFn={bulkTagTransactions}
           demoNames={demoNames}
         />
       )}

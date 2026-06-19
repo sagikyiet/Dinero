@@ -490,6 +490,19 @@ body {
 }
 .tx-count-label { font-size: 0.8rem; color: var(--text-muted); }
 
+.bulk-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1.25rem;
+  background: #eff6ff;
+  border-bottom: 1px solid var(--border);
+}
+.bulk-actions-count { font-size: 0.85rem; font-weight: 600; color: var(--primary-dark); }
+
+.select-col { width: 2rem; text-align: center; }
+.select-col input[type="checkbox"] { cursor: pointer; }
+
 .filters {
   display: flex;
   gap: 0.5rem;

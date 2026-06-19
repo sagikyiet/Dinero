@@ -109,7 +109,7 @@ function parseAmount(val) {
     .replace(/\s/g, '')
     .replace(/−/g, '-');
   const num = parseFloat(cleaned);
-  return isNaN(num) ? null : Math.abs(num);
+  return isNaN(num) ? null : num;
 }
 
 // DD-MM-YYYY → YYYY-MM-DD  (primary Max format)

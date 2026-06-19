@@ -10,3 +10,5 @@ monthly uploads/
 .claude/
 
 *.db.backup
+
+frontend/dist/

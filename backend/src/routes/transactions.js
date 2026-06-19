@@ -84,22 +84,54 @@ router.patch('/:id/tag', (req, res) => {
 
   if (permanent && tag && tx.description) {
     const dayOfMonth = parseInt(tx.date.slice(8, 10), 10); // YYYY-MM-DD
-    // Upsert rule (one rule per description)
+    const ruleAmount = tx.debit ?? tx.credit ?? null;
     db.prepare(`
-      INSERT INTO tag_rules (description, day_of_month, tag)
-      VALUES (?, ?, ?)
-      ON CONFLICT(description) DO UPDATE SET day_of_month = excluded.day_of_month, tag = excluded.tag
-    `).run(tx.description, dayOfMonth, tag);
+      INSERT INTO tag_rules (description, day_of_month, tag, amount, event_id)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(description) DO UPDATE SET
+        day_of_month = excluded.day_of_month,
+        tag = excluded.tag,
+        amount = excluded.amount,
+        event_id = excluded.event_id
+    `).run(tx.description, dayOfMonth, tag, ruleAmount, resolvedEventId);
 
     // Apply rule to all matching transactions across all months
     db.prepare(`
-      UPDATE transactions SET tag = ?
+      UPDATE transactions SET tag = ?, event_id = ?
       WHERE description = ?
       AND ABS(CAST(strftime('%d', date) AS INTEGER) - ?) <= 2
-    `).run(tag, tx.description, dayOfMonth);
+      AND (? IS NULL OR ABS(COALESCE(debit, credit) - ?) <= ABS(?) * 0.1)
+    `).run(tag, resolvedEventId, tx.description, dayOfMonth, ruleAmount, ruleAmount, ruleAmount);
   }
 
   res.json({ success: true });
+});
+
+// Apply the same tag + event to multiple transactions at once. Unlike the
+// single-tag route, this never creates/updates tag_rules or cascades to
+// other matching transactions — only the given ids are touched.
+router.patch('/bulk-tag', (req, res) => {
+  const db = getDb();
+  const { ids, tag, event_id } = req.body; // tag may be null to clear
+
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'נדרשת רשימת פעולות לתיוג' });
+  }
+  const txIds = ids.map(id => parseInt(id)).filter(Number.isInteger);
+  if (txIds.length === 0) {
+    return res.status(400).json({ error: 'רשימת פעולות לא תקינה' });
+  }
+
+  const resolvedEventId = event_id ?? null;
+  const placeholders = txIds.map(() => '?').join(',');
+
+  const result = tag
+    ? db.prepare(`UPDATE transactions SET tag = ?, event_id = ? WHERE id IN (${placeholders})`)
+        .run(tag, resolvedEventId, ...txIds)
+    : db.prepare(`UPDATE transactions SET tag = NULL, tag_note = '', event_id = ? WHERE id IN (${placeholders})`)
+        .run(resolvedEventId, ...txIds);
+
+  res.json({ success: true, updated: result.changes });
 });
 
 // Toggle special flag on a transaction

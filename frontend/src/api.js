@@ -46,6 +46,13 @@ export const tagTransaction = (txId, tag, permanent = false, tag_note = '', even
     body: JSON.stringify({ tag, permanent, tag_note, ...(event_id !== undefined && { event_id }) }),
   });
 
+export const bulkTagTransactions = (ids, tag, event_id = undefined) =>
+  request('/transactions/bulk-tag', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids, tag, ...(event_id !== undefined && { event_id }) }),
+  });
+
 export const fetchEvents = () => request('/events');
 export const fetchEventsSummary = () => request('/events/summary');
 export const fetchEventTransactions = (id) => request(`/events/${id}/transactions`);
@@ -127,6 +134,13 @@ export const tagCCTransaction = (txId, tag, permanent = false, tag_note = '', ev
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tag, permanent, tag_note, ...(event_id !== undefined && { event_id }) }),
+  });
+
+export const bulkTagCCTransactions = (ids, tag, event_id = undefined) =>
+  request('/credit-cards/transactions/bulk-tag', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids, tag, ...(event_id !== undefined && { event_id }) }),
   });
 
 export const fetchCCFileTransactions = (uploadId) =>
